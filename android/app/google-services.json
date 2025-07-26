@@ -1,0 +1,105 @@
+{
+  "project_info": {
+    "project_number": "861546983434",
+    "project_id": "dots-b3559",
+    "storage_bucket": "dots-b3559.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:861546983434:android:cc4f196bed8a9079856ff3",
+        "android_client_info": {
+          "package_name": "com.batau.clientweb"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZ629zCBF4CJWA7FfUMpQIVi5xq97GJlo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:861546983434:android:02e2339d13a3a1d1856ff3",
+        "android_client_info": {
+          "package_name": "com.batau.dotscombined"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZ629zCBF4CJWA7FfUMpQIVi5xq97GJlo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:861546983434:android:17ba9454d5917b4a856ff3",
+        "android_client_info": {
+          "package_name": "com.bataudev.dots"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZ629zCBF4CJWA7FfUMpQIVi5xq97GJlo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:861546983434:android:49411d497f68fc66856ff3",
+        "android_client_info": {
+          "package_name": "com.bataudev.dotsconsultants"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZ629zCBF4CJWA7FfUMpQIVi5xq97GJlo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:861546983434:android:1fc5e1eb57032a95856ff3",
+        "android_client_info": {
+          "package_name": "com.bataudev.play.dots"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZ629zCBF4CJWA7FfUMpQIVi5xq97GJlo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
