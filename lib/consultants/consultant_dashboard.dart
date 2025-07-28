@@ -10,6 +10,7 @@ import 'customer_care.dart';
 import 'feedback.dart';
 import 'industry_selection.dart';
 import 'invoice_database.dart';
+import 'list.dart';
 import 'personal_information.dart';
 import 'profile.dart';
 import 'settings.dart';
@@ -42,7 +43,7 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
     {
       'icon': Icons.notification_important_outlined,
       'title': 'Requests',
-      'page': RequestDatabase(),
+      'page': NotificationsListPage(),
     },
     {
       'icon': Icons.calendar_today_outlined,
@@ -549,10 +550,8 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
                     child: Image.network(
                       'https://firebasestorage.googleapis.com/v0/b/dots-b3559.appspot.com/o/Dots%20logo.png?alt=media&token=2c2333ea-658a-4a70-9378-39c6c248f5ca',
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.more_vert,
-                        color: Colors.white,
-                      ),
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.more_vert, color: Colors.white),
                     ),
                   ),
                   onPressed: () {

@@ -444,7 +444,7 @@ class _AppointmentPageState extends State<AppointmentPage>
         'jobDescription': _controllerJobDescription.text,
         'appointmentDate': formattedDate,
         'timestamp': now,
-        'status': 'accepted',
+        'status': 'Active',
         'clientId': userId,
         'requestType': widget.requestType,
         'industryType': widget.industryType,
@@ -1020,237 +1020,129 @@ class _MapPickerDialogState extends State<MapPickerDialog> {
           _selectedLocation = _currentLocation;
           _isLoading = false;
         });
-
-        // Wait for the map to be built before moving
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _mapController.move(_currentLocation, 15.0);
-            setState(() {
-              _mapReady = true;
-            });
-          }
-        });
+        _mapController.move(_currentLocation, 15.0);
       }
     } catch (e) {
+      print('Error getting current location: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error getting current location: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.white.withOpacity(0.95),
+    return AlertDialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.95,
-        height: MediaQuery.of(context).size.height * 0.85,
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      title: Text(
+        'Select Location',
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: const Color.fromARGB(225, 0, 74, 173),
+        ),
+      ),
+      content: SizedBox(
+        width: MediaQuery.of(context).size.width * 0.9,
+        height: 400,
+        child: Stack(
           children: [
-            Row(
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: _currentLocation,
+                initialZoom: 15.0,
+                onTap: (tapPosition, point) {
+                  setState(() {
+                    _selectedLocation = point;
+                  });
+                },
+              ),
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E3A8A),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
+                // Use the working TileLayer from original implementation
+                TileLayer(
+                  urlTemplate:
+                      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                  subdomains: const ['a', 'b', 'c'],
+                  userAgentPackageName: 'com.yourapp.name',
+                  tileProvider: NetworkTileProvider(),
+                  maxZoom: 19,
+                  keepBuffer: 5,
+                  // Additional configurations for dark theme compatibility
+                  tileBuilder: (context, child, tile) {
+                    return child;
+                  },
+                ),
+                if (_selectedLocation != null)
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: _selectedLocation!,
+                        width: 80,
+                        height: 80,
+                        child: Icon(
+                          Icons.location_pin,
+                          color: Colors.red,
+                          size: 40,
+                        ),
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.map, color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Text(
-                    'Select Location',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E3A8A),
-                    ),
-                  ),
-                ),
               ],
             ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: Stack(
-                children: [
-                  if (!_isLoading && _mapReady)
-                    FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(
-                        initialCenter: _currentLocation,
-                        initialZoom: 15.0,
-                        onTap: (tapPosition, point) {
-                          setState(() {
-                            _selectedLocation = point;
-                          });
-                        },
-                      ),
-                      children: [
-                        TileLayer(
-                          urlTemplate:
-                              "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                          subdomains: ['a', 'b', 'c'],
-                          userAgentPackageName: 'com.example.app',
-                          tileProvider: CancellableNetworkTileProvider(),
-                          retinaMode:
-                              MediaQuery.of(context).devicePixelRatio > 1.0,
-                        ),
-                        if (_selectedLocation != null)
-                          MarkerLayer(
-                            markers: [
-                              Marker(
-                                point: _selectedLocation!,
-                                width: 80,
-                                height: 80,
-                                child: const Icon(
-                                  Icons.location_pin,
-                                  color: Colors.red,
-                                  size: 40,
-                                ),
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  if (_isLoading)
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.95),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFF1E3A8A),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Loading map...',
-                              style: TextStyle(
-                                color: Colors.black.withOpacity(0.7),
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
+            if (_isLoading)
+              Center(
+                child: Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          const Color.fromARGB(225, 0, 74, 173),
                         ),
                       ),
-                    ),
-                ],
+                      SizedBox(height: 16),
+                      Text('Loading location...'),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => Navigator.of(context).pop(),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 24,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.black.withOpacity(0.2),
-                        ),
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          color: Color(0xFF1E3A8A),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _selectedLocation == null
-                        ? null
-                        : () => Navigator.of(context).pop(_selectedLocation),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 24,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: _selectedLocation == null
-                            ? null
-                            : const LinearGradient(
-                                colors: [Colors.white, Color(0xFFF0F0F0)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                        color: _selectedLocation == null
-                            ? Colors.grey.withOpacity(0.5)
-                            : null,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        'Select',
-                        style: TextStyle(
-                          color: _selectedLocation == null
-                              ? Colors.white.withOpacity(0.7)
-                              : const Color(0xFF1E3A8A),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ],
         ),
       ),
+      actions: <Widget>[
+        TextButton(
+          child: Text(
+            'Cancel',
+            style: TextStyle(color: Colors.grey[600], fontSize: 16),
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color.fromARGB(225, 0, 74, 173),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: Text(
+            'Select',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          onPressed: _selectedLocation == null
+              ? null
+              : () => Navigator.of(context).pop(_selectedLocation),
+        ),
+      ],
     );
   }
 }

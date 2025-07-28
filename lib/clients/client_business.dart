@@ -1531,9 +1531,16 @@ class _MapPickerDialogState extends State<MapPickerDialog> {
                     children: [
                       TileLayer(
                         urlTemplate:
-                            "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                        userAgentPackageName: 'com.example.app',
-                        tileProvider: CancellableNetworkTileProvider(),
+                            'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                        subdomains: const ['a', 'b', 'c'],
+                        userAgentPackageName: 'com.yourapp.name',
+                        tileProvider: NetworkTileProvider(),
+                        maxZoom: 19,
+                        keepBuffer: 5,
+                        // Additional configurations for dark theme compatibility
+                        tileBuilder: (context, child, tile) {
+                          return child;
+                        },
                       ),
                       if (_selectedLocation != null)
                         MarkerLayer(

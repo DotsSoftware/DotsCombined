@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
@@ -7,6 +8,7 @@ import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_ti
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dashboard.dart';
 import 'login_register_page.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:flutter/services.dart';
@@ -90,9 +92,17 @@ class _MapPickerDialogState extends State<MapPickerDialog> {
               children: [
                 // Use the working TileLayer from original implementation
                 TileLayer(
-                  urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                  userAgentPackageName: 'com.example.app',
-                  tileProvider: CancellableNetworkTileProvider(),
+                  urlTemplate:
+                      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                  subdomains: const ['a', 'b', 'c'],
+                  userAgentPackageName: 'com.yourapp.name',
+                  tileProvider: NetworkTileProvider(),
+                  maxZoom: 19,
+                  keepBuffer: 5,
+                  // Additional configurations for dark theme compatibility
+                  tileBuilder: (context, child, tile) {
+                    return child;
+                  },
                 ),
                 if (_selectedLocation != null)
                   MarkerLayer(
@@ -277,6 +287,7 @@ class _RegisterPageState extends State<RegisterPage>
   OverlayEntry? _overlayEntry;
   List<GeoapifyPlace> _addressSuggestions = [];
   bool isLoading = false;
+  Timer? _timer;
 
   final TextEditingController _controllerFirstName = TextEditingController();
   final TextEditingController _controllerSurname = TextEditingController();
@@ -599,37 +610,99 @@ class _RegisterPageState extends State<RegisterPage>
   }
 
   Future<void> registerUser() async {
-    try {
-      setState(() => isLoading = true);
-      UserCredential userCredential = await _auth
-          .createUserWithEmailAndPassword(
-            email: _controllerEmail.text.trim(),
-            password: _controllerPassword.text.trim(),
-          );
+    if (!isLoading) {
+      setState(() {
+        isLoading = true;
+        errorMessage = '';
+      });
 
-      User? user = userCredential.user;
-      if (user != null) {
-        await storeUserDataInFirestore(user.uid);
-        await user.sendEmailVerification();
+      try {
+        UserCredential userCredential = await _auth
+            .createUserWithEmailAndPassword(
+              email: _controllerEmail.text.trim(),
+              password: _controllerPassword.text.trim(),
+            );
 
-        // Show dialog to notify user to verify email
-        _showEmailVerificationDialog(user);
-
+        await storeUserDataInFirestore(userCredential.user!.uid);
+        await userCredential.user!.sendEmailVerification();
+        await checkEmailVerified(userCredential.user!);
+      } on FirebaseAuthException catch (e) {
         setState(() {
-          isVerifyingEmail = true;
+          errorMessage = e.message;
+        });
+      } finally {
+        setState(() {
           isLoading = false;
         });
-        startEmailVerificationCheck(user);
       }
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        errorMessage = e.message;
-        isLoading = false;
-      });
     }
   }
 
-  void _showEmailVerificationDialog(User user) {
+  Future<void> checkEmailVerified(User user) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            'Verify Your Email',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: const Color.fromARGB(225, 0, 74, 173),
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'A verification email has been sent to ${_controllerEmail.text}',
+                style: const TextStyle(color: Colors.black),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Please check your email and click the verification link.',
+                style: const TextStyle(color: Colors.black),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Waiting for email verification...',
+                style: TextStyle(
+                  color: const Color.fromARGB(225, 0, 74, 173),
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      try {
+        await user.reload();
+        user = _auth.currentUser!;
+
+        if (user.emailVerified) {
+          _timer?.cancel();
+          Navigator.of(context).pop();
+          await _showEmailVerificationDialog(user);
+        }
+      } catch (e) {
+        _timer?.cancel();
+        setState(() {
+          errorMessage = 'Error verifying email: ${e.toString()}';
+        });
+      }
+    });
+  }
+
+  Future<void> _showEmailVerificationDialog(User user) async {
     showDialog(
       context: context,
       barrierDismissible: false, // Prevent closing until verification or cancel
@@ -750,7 +823,7 @@ class _RegisterPageState extends State<RegisterPage>
   void _navigateToRequestTypePage() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const TermsPage()),
+      MaterialPageRoute(builder: (context) => DashboardPage()),
     );
   }
 
@@ -1329,6 +1402,7 @@ class _RegisterPageState extends State<RegisterPage>
 
   @override
   void dispose() {
+    _timer?.cancel();
     _animationController.dispose();
     _controllerFirstName.dispose();
     _controllerSurname.dispose();

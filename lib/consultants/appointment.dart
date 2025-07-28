@@ -61,15 +61,13 @@ class _AppointmentPageState extends State<AppointmentPage>
       ),
     );
 
-    _slideUpAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.3, 1.0, curve: Curves.elasticOut),
-      ),
-    );
+    _slideUpAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: const Interval(0.3, 1.0, curve: Curves.elasticOut),
+          ),
+        );
 
     _animationController.forward();
   }
@@ -221,10 +219,7 @@ class _AppointmentPageState extends State<AppointmentPage>
                 const SizedBox(height: 8),
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
               ],
             ),
@@ -247,7 +242,8 @@ class _AppointmentPageState extends State<AppointmentPage>
           label: '${_travelDistance.round()} km',
           onChanged: (double value) {
             double closestPoint = points.reduce(
-                (a, b) => (a - value).abs() < (b - value).abs() ? a : b);
+              (a, b) => (a - value).abs() < (b - value).abs() ? a : b,
+            );
             setState(() {
               _travelDistance = closestPoint;
             });
@@ -257,10 +253,7 @@ class _AppointmentPageState extends State<AppointmentPage>
         ),
         Text(
           'Maximum distance willing to travel: ${_travelDistance.round()} km',
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
-            fontSize: 14,
-          ),
+          style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14),
         ),
       ],
     );
@@ -284,24 +277,25 @@ class _AppointmentPageState extends State<AppointmentPage>
 
       if (permission == LocationPermission.deniedForever) {
         throw Exception(
-            'Location permissions are permanently denied, we cannot request permissions.');
+          'Location permissions are permanently denied, we cannot request permissions.',
+        );
       }
 
       Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+        desiredAccuracy: LocationAccuracy.high,
+      );
 
-      List<Placemark> placemarks =
-          await placemarkFromCoordinates(position.latitude, position.longitude);
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
 
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks[0];
         setState(() {
           _controllerSiteLocation.text =
               "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
-          _coordinates = {
-            'lat': position.latitude,
-            'lng': position.longitude,
-          };
+          _coordinates = {'lat': position.latitude, 'lng': position.longitude};
         });
       }
     } catch (e) {
@@ -370,9 +364,7 @@ class _AppointmentPageState extends State<AppointmentPage>
       await FirebaseFirestore.instance
           .collection('consultant_side')
           .doc(user.uid)
-          .set({
-        'appointment': appointmentData,
-      }, SetOptions(merge: true));
+          .set({'appointment': appointmentData}, SetOptions(merge: true));
 
       Navigator.push(
         context,
@@ -784,8 +776,16 @@ class _MapPickerDialogState extends State<MapPickerDialog> {
                 children: [
                   TileLayer(
                     urlTemplate:
-                        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
                     subdomains: const ['a', 'b', 'c'],
+                    userAgentPackageName: 'com.yourapp.name',
+                    tileProvider: NetworkTileProvider(),
+                    maxZoom: 19,
+                    keepBuffer: 5,
+                    // Additional configurations for dark theme compatibility
+                    tileBuilder: (context, child, tile) {
+                      return child;
+                    },
                   ),
                   if (_selectedLocation != null)
                     MarkerLayer(
@@ -844,7 +844,8 @@ class _MapPickerDialogState extends State<MapPickerDialog> {
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: () => Navigator.of(context).pop(_selectedLocation),
+                        onTap: () =>
+                            Navigator.of(context).pop(_selectedLocation),
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 16),

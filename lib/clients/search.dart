@@ -158,27 +158,30 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
   }
 
   void startTimer() {
-  debugPrint('Starting timer with $_secondsRemaining seconds remaining');
-  _timer?.cancel(); // Cancel any existing timer
-  _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-    debugPrint('Timer tick: $_secondsRemaining seconds remaining');
-    if (!mounted) {
-      debugPrint('Timer cancelled - widget not mounted');
-      timer.cancel();
-      return;
-    }
-
-    setState(() {
-      if (_secondsRemaining > 0) {
-        _secondsRemaining--;
-      } else {
-        debugPrint('Timer expired');
-        timer.cancel();
-        _handleTimerExpiration();
-      }
+    _timer?.cancel();
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      setState(() {
+        if (_secondsRemaining > 0) {
+          _secondsRemaining--;
+        } else {
+          timer.cancel();
+          if (!isConsultantAvailable) {
+            setState(() {
+              isLoading = false;
+              showNoConsultantsText = true;
+            });
+            // Don't clear the request - keep it active in Firestore
+            if (activeRequestId != null) {
+              FirebaseFirestore.instance
+                  .collection('notifications')
+                  .doc(activeRequestId)
+                  .update({'status': 'pending'});
+            }
+          }
+        }
+      });
     });
-  });
-}
+  }
 
   void _handleTimerExpiration() {
     debugPrint('Timer expired');
@@ -201,17 +204,18 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
     final serviceAccountJson = {
       "type": "service_account",
       "project_id": "dots-b3559",
-      "private_key_id": "e295a7c9d3778eaa4c6d6ed13289d437890d6111",
+      "private_key_id": "9828916518aae6ee63dee0f5efb5bf1b990ddfba",
       "private_key":
-          "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCxhRWSxjZam97W\n9v+QS3RzoYTq3IB95jVQFIOMJHjcc20uAWWydwMRKAO8zvnWbwXXbrlkpH82d9EC\noPE9/inxOHJeHkgR17BhNkLizXVcdTsuOFRB1jwp/iXe1sIm6MTIGNy4FNmy46YM\n8dPfqcHd5nG9Gv9DqfePYMTPQVlcNch/QOp+1jxHAWodvjduKioLFk57b6KCqxCW\ncfJBONT4rRia4lYTopdaBa4WQajRv44+s4Opy9IcyfwCWcdvB/HWs8bvy+IUbgr9\ncACNbsnUTZW6tuJ0WAvX3fjgbAPuh2rGZo7mQgjDx/sa9YeHXXQjt0/5gndC9CbE\n1SUmoqpLAgMBAAECggEAOXWnVvvbihab2Z7XeABEcE0etdqrqJTEOuh47/q6ODkQ\nZOzE2zBUiNAX7ZxdGACVtna7gY0RNDMyLxSjIXrMXqzzr+1DTKsxBzZGDh2M2GGF\nx18qPqk2ji0aWvfOnkOHtnD9uIPfN10iWVxJRUMwYj/+HsTHTUKNxBYBfkhbwVGI\nkA1HDxGcVrrJUTgWmlIH273bdUT12vzIcsujjU4sO2YDLQyMaCZH//y8QTrjiJKg\nfVqVrtIvvLF0c9iYEsLZe7ZqNVzbMZKLIPEjElT1Qh2fbDV9GP9kcLThLUW0GOgl\nkacNxXGQhcYCzdB5+8gfScbzRAQdt3AUGBVth1reCQKBgQDs16Fsu1G3ms5G/5Mi\nFD3udtnyMWQfMC7uoy/V9TxRLOxYsBayiT+PfPIQTaxA5k2g1Bz3XFIVWK0hDLO5\nAeslwrn3YwerxtLF4vss7bqiCUJmBZChhBuYp2pZudzGbNZnXBAhzZRhyOJjOBPP\ncyNRUCwY/Cxp5xV0Nw9e5iIFBwKBgQC/4Qt5m69XyZJp/loaTmoNYp2EpLH9kojV\nxQMoxqAdfOvcqZ5/rYt+P4TiZBQ4V4AnqDgEtoSB5kNWsJtN/xzqN6BKbf35qwEm\n9qjEeQZz23hDXlhIwK6YuEMJewaBKjgY+8MtsmKjNfOY7Ryvo+ubtqNNWiWmfvp4\nxRkueXWDnQKBgBUsdecFnBmhAl4AjUPXsW23PGbVmZDcOuXkuusS4JCVRo/rNixB\n7ufCENX6S7MFo90D+Y73tvLnmZrByvN4Q3B9xyhhtxbZUJCWaUQsAKppz4DVcIew\nCtOL7AsXfbBTnJti9KJBAcn4Lp0WL1c1gOvNEhQtvz68hQN9xKcERfhTAoGAfPYa\nHAu5KOn8sYzVr1YsGSWFQlJkHKkm9llFEnQw6KNnlCDfOXWTaBgD+dCFnp/VtX4H\nZYJcT6DfcAC6VBR2B09M08xIYCXvLSnshW/wNNnUu8MgqdjanFk8R1tYxBvzxsmH\ntiX7uSE00P5y9SxDD/jk50ZzSLhfdPGf0bWGQ70CgYBLx4DOWZtQoSgFPXbuxVJ7\n7Z9KRT5m9Tgbn6tm+tkESh9rtudhXAdlbqKD2qUMokHensB+o//ZlVQuNhd5AH9p\n0Vppat9apxY4lrPsWkYRT9grWqoscLeOOVY1x7sb3T5BN9FZ+7Y+7NShWKtVdx7H\nU6AwewE7uaG+JA05HWn0Yw==\n-----END PRIVATE KEY-----\n",
-      "client_email": "dots-fcm-messaging@dots-b3559.iam.gserviceaccount.com",
-      "client_id": "101933093859463413487",
+          "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQC4gJhJcOQnDkvc\nP+RiDdSl7hYl3KBDlDo/hp1RyoxzKLqzwrqSRBEMFfZN7WIEUZJV/2whdOI7oEFt\n2Z5O+JeDqNblMw5WMTjlGHkDR3ZcDHrv9oIGjF4NXtkT36esXNjVbEUKbwLlD24K\nEpxZy6/zbXwiFieIPvzlZmd5Xo7fKxYqmetYiirOc8X5wSk/bLuKADGEOyHyamd/\n0HgBVsoVkoOTF2verBLdvib5UTvgnM2ov5xb/mnbbeAGlZALkieeSW1j4spGO4Sk\nwGO/6sFG2s91UTO113gi8YwHOAP2ae8ZMnTJle8seVg2iQebzLH+/Zj69hpIIKsQ\nDSLUxhzlAgMBAAECggEADHgqcqo1zTru3xWVXJglM0quRgRNc4vIzQLOzpiTGfRa\ne+ww+lIt2cSBNz6QJY0SyAuhdfhlktSPn3o59AniiZQnY+mpsiMU/ozDHvjdM7bn\nNyEQpBsn/xzWLHzs4t4KjJAK8XvTtQHwNK+R0BLPUzMm1NHs/Y0OP/3GCAKfQs9T\n0VhUHtq/BQZksAUU2ANAUbXpnoY7rBnPCwiL8kSTAptxQ6dbSskuCxLtqSZkqSxo\n4EsOfOUcB6WsV8y3+SutIAvPsWaDNxzUrzfGXfIRXdwO6+guRyN22OonLylfwddi\nhvGHZJlf+jUqcPOu/sSX6z2p0XZR13HwsXn4v6M4YQKBgQD1kl3mxX8hB5ra/uqL\njLbw9+000uMMiA158kllHaW87uRmlDfEFiQnj5FFhb0sXSPlvPm37f2ifnNlsa6a\ns6D63XZmAdWvTlGbzxK5NTlmKNvxSlN7G4L7/7M4wKc5JxGHrB7yV1T1XkdMtElH\nQx62iKmU5gnXBPAXYb8b1Da24QKBgQDAVlYzwWs/43ZRPkXIejFqZcmuQCfw+9OB\nfrKGOIXYlpCHQDxZ9w9DGYX5/xlAa8G6YRO+bjqF3RqdKAEcRs+XfhYTHj4j0ZOo\niDP7nnpQh6saVlVYlSSkziajE3C0bgjs62dw7R2zTVPVX+GSvzUaLUC4+x9sygea\n1pDUD85ahQKBgFGgTUYf75nzBS41/ZBVPZnrTxV347COqKwYNP0/VY/veEwAiGjN\nU0czGX6abb8JVp1Oq1LP8LbKgWEUJo2Vl7TLWEef5H9Y8RdxRS/62RF0E2eo5QbO\npkNNQy1iHDOLIPCP7dlv3fWRWPHOG21sihDybCvqKusl4QhknTmK2IUBAoGAXQAi\nNGpc+op45nXO9k4nYMQRDgGVjo+lyKLDneTsyzqabdugkvvEVHSd9LDlu+Gezgks\nq9LO13V+7eivCMYwkJb2A46HC3jGBiK9x/fsOs4u7NA7+lY7XrkTs5ytzYC7Lhvx\na4gr6UwFslHnV7a+7YZeGlPK8SaLINKJOxDdfaUCgYAUZIxpgvhgfY+NtgysDcGc\nxewumxc7Ba0kVyMFiYsI5DJxBDqkJ9L3aayunf8OvAj7sHzwY6QXjwE8PfEjZMYV\nhGZ25qU1Bvew7B+/Ic/pdvQ077qwANyxduife3ImF9uuXZPNG7RNn0yukXO4iElf\ne6CJGLr6YxGO2/6GKCPa7g==\n-----END PRIVATE KEY-----\n",
+      "client_email":
+          "firebase-adminsdk-ecgab@dots-b3559.iam.gserviceaccount.com",
+      "client_id": "106002613230535720514",
       "auth_uri": "https://accounts.google.com/o/oauth2/auth",
       "token_uri": "https://oauth2.googleapis.com/token",
       "auth_provider_x509_cert_url":
           "https://www.googleapis.com/oauth2/v1/certs",
       "client_x509_cert_url":
-          "https://www.googleapis.com/robot/v1/metadata/x509/dots-fcm-messaging%40dots-b3559.iam.gserviceaccount.com",
+          "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-ecgab%40dots-b3559.iam.gserviceaccount.com",
       "universe_domain": "googleapis.com",
     };
     List<String> scopes = [
@@ -235,14 +239,32 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
 
   Future<void> sendFCMMessage(String fcmToken, String requestId) async {
     try {
-      debugPrint('Attempting to send FCM to token: $fcmToken');
+      // Save request details to Firestore
 
-      if (fcmToken.isEmpty) {
-        debugPrint('Empty FCM token, skipping');
-        return;
-      }
+      await FirebaseFirestore.instance
+          .collection('active_requests')
+          .doc(requestId)
+          .set({
+            'clientId': FirebaseAuth.instance.currentUser?.uid,
 
-      final String serverKey = await getAccessToken();
+            'timestamp': FieldValue.serverTimestamp(),
+
+            'status': 'pending',
+
+            // Add other relevant request details
+          });
+
+      await FirebaseFirestore.instance.collection('active_requests').add({
+        'consultantId': fcmToken,
+        'requestId': requestId,
+        'title': 'New Client Request',
+        'body': 'You have a new client request!',
+        'status': 'Pending',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      final String serverKey = await getAccessToken(); // Get your server key
+
       final String fcmEndpoint =
           'https://fcm.googleapis.com/v1/projects/dots-b3559/messages:send';
 
@@ -258,15 +280,25 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
             'requestId': requestId,
             'click_action': 'FLUTTER_NOTIFICATION_CLICK',
             'industry': widget.industryType,
+            'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
           },
-          'android': {'priority': 'high'},
+          'android': {
+            'priority': 'high',
+            'notification': {
+              'channel_id': 'high_importance_channel',
+              'priority': 'high',
+              'default_sound': true,
+              'default_vibrate_timings': true,
+            },
+          },
           'apns': {
             'headers': {'apns-priority': '10'},
+            'payload': {
+              'aps': {'sound': 'default', 'badge': 1},
+            },
           },
         },
       };
-
-      debugPrint('Sending FCM payload: ${jsonEncode(message)}');
 
       final http.Response response = await http.post(
         Uri.parse(fcmEndpoint),
@@ -277,24 +309,19 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
         body: jsonEncode(message),
       );
 
-      debugPrint('FCM response: ${response.statusCode} - ${response.body}');
-
-      if (response.statusCode != 200) {
-        throw Exception('FCM failed: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        print('FCM message sent successfully to $fcmToken');
+      } else {
+        print('Failed to send FCM message: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('FCM error: $e');
-      setState(() => errorMessage = 'Notification failed');
+      print('Error sending FCM message or saving to Firestore: $e');
     }
   }
 
   Future<void> searchForConsultants(String userId) async {
     try {
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
-
+      // Fetch the latest client request
       QuerySnapshot clientRequestSnapshot = await FirebaseFirestore.instance
           .collection('selection')
           .doc(userId)
@@ -303,68 +330,74 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
           .limit(1)
           .get();
 
-      if (clientRequestSnapshot.docs.isEmpty) {
-        setState(() {
-          isLoading = false;
-          showNoConsultantsText = true;
-        });
-        return;
-      }
+      if (clientRequestSnapshot.docs.isNotEmpty) {
+        final latestRequest = clientRequestSnapshot.docs.first;
+        Map<String, dynamic> requestData =
+            latestRequest.data() as Map<String, dynamic>;
+        String clientIndustryType = requestData['industry_type'];
 
-      final latestRequest = clientRequestSnapshot.docs.first;
-      Map<String, dynamic> requestData =
-          latestRequest.data() as Map<String, dynamic>;
-      String clientIndustryType = requestData['industry_type'];
+        // Fetch the latest appointment details
+        QuerySnapshot appointmentSnapshot = await FirebaseFirestore.instance
+            .collection('selection')
+            .doc(userId)
+            .collection('appointments')
+            .orderBy('timestamp', descending: true)
+            .limit(1)
+            .get();
 
-      QuerySnapshot consultantSnapshot = await FirebaseFirestore.instance
-          .collection('consultant_register')
-          .where('industry_type', isEqualTo: clientIndustryType)
-          .get();
+        Map<String, dynamic> appointmentData = {};
+        if (appointmentSnapshot.docs.isNotEmpty) {
+          appointmentData =
+              appointmentSnapshot.docs.first.data() as Map<String, dynamic>;
+        }
 
-      if (consultantSnapshot.docs.isEmpty) {
-        setState(() {
-          isLoading = false;
-          showNoConsultantsText = true;
-        });
-        return;
-      }
+        // Fetch consultants based on industry type
+        QuerySnapshot consultantSnapshot = await FirebaseFirestore.instance
+            .collection('consultant_register')
+            .where('industry_type', isEqualTo: clientIndustryType)
+            .get();
 
-      String requestId = FirebaseFirestore.instance
-          .collection('notifications')
-          .doc()
-          .id;
-      activeRequestId = requestId;
+        if (consultantSnapshot.docs.isNotEmpty) {
+          // Save notification request data
+          String requestId = FirebaseFirestore.instance
+              .collection('notifications')
+              .doc()
+              .id;
+          activeRequestId = requestId; // Store the request ID
 
-      await FirebaseFirestore.instance
-          .collection('notifications')
-          .doc(requestId)
-          .set({
-            'clientId': userId,
-            'timestamp': FieldValue.serverTimestamp(),
-            'status': 'searching',
-            'industry_type': clientIndustryType,
-            'expiresAt': DateTime.now()
-                .add(const Duration(minutes: 5))
-                .toIso8601String(),
-            'paymentStatus': 'pending',
-          });
+          // Save notification request data with additional fields
+          await FirebaseFirestore.instance
+              .collection('notifications')
+              .doc(requestId)
+              .set({
+                'clientId': userId,
+                'timestamp': FieldValue.serverTimestamp(),
+                'status': 'searching',
+                'industry_type': clientIndustryType,
+                'jobDate': appointmentData['jobDate'] ?? '',
+                'jobTime': appointmentData['jobTime'] ?? '',
+                'siteLocation': appointmentData['siteLocation'] ?? '',
+                'jobDescription': appointmentData['jobDescription'] ?? '',
+                'expiresAt': FieldValue.serverTimestamp()
+                    .toString(), // Add expiration timestamp
+                'paymentStatus': 'pending', // Add payment status field
+              });
 
-      startTimer();
+          // Modified timer logic
+          startTimer();
 
-      for (var consultant in consultantSnapshot.docs) {
-        String fcmToken = consultant['fcmToken'];
-        if (fcmToken != null && fcmToken.isNotEmpty) {
-          await sendFCMMessage(fcmToken, requestId);
+          // Send FCM message to each consultant
+          for (var consultant in consultantSnapshot.docs) {
+            String fcmToken = consultant['fcmToken'];
+            await sendFCMMessage(fcmToken, requestId);
+          }
+
+          // Listen for request status changes
+          listenForRequestStatus(requestId);
         }
       }
-
-      listenForRequestStatus(requestId);
     } catch (error) {
       print("Error fetching consultants: $error");
-      setState(() {
-        isLoading = false;
-        errorMessage = 'Error searching for consultants';
-      });
     }
   }
 
@@ -374,51 +407,36 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
         .collection('notifications')
         .doc(requestId)
         .snapshots()
-        .listen(
-          (snapshot) {
-            if (snapshot.exists) {
-              String status = snapshot.data()?['status'] ?? 'pending';
-              if (status == 'accepted') {
-                _timer?.cancel();
-                displayAcceptedConsultant(
-                  snapshot.data()?['acceptedConsultantId'],
-                );
-                setState(() {
-                  hasActiveRequest = false;
-                  activeRequestId = null;
-                });
-              }
+        .listen((snapshot) {
+          if (snapshot.exists) {
+            String status = snapshot.data()?['status'];
+            if (status == 'accepted') {
+              _timer?.cancel();
+              displayAcceptedConsultant(
+                snapshot.data()?['acceptedConsultantId'],
+              );
+
+              // Clear the active request
+              setState(() {
+                hasActiveRequest = false;
+                activeRequestId = null;
+              });
             }
-          },
-          onError: (error) {
-            print('Error listening for request status: $error');
-            setState(() {
-              errorMessage = 'Error monitoring request status';
-            });
-          },
-        );
+          }
+        });
   }
 
-  Future<void> displayAcceptedConsultant(String? consultantId) async {
-    if (consultantId == null) return;
+  Future<void> displayAcceptedConsultant(String consultantId) async {
+    DocumentSnapshot consultantDoc = await FirebaseFirestore.instance
+        .collection('consultant_register')
+        .doc(consultantId)
+        .get();
 
-    try {
-      DocumentSnapshot consultantDoc = await FirebaseFirestore.instance
-          .collection('consultant_register')
-          .doc(consultantId)
-          .get();
-
-      if (consultantDoc.exists) {
-        setState(() {
-          selectedConsultant = consultantDoc.data() as Map<String, dynamic>;
-          isConsultantAvailable = true;
-          isLoading = false;
-        });
-      }
-    } catch (e) {
-      print('Error fetching consultant details: $e');
+    if (consultantDoc.exists) {
       setState(() {
-        errorMessage = 'Error loading consultant details';
+        selectedConsultant = consultantDoc.data() as Map<String, dynamic>;
+        isConsultantAvailable = true;
+        isLoading = false;
       });
     }
   }
