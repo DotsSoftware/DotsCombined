@@ -15,6 +15,7 @@ import 'competency.dart';
 import 'package:googleapis_auth/auth_io.dart' as auth;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'firebase_auth_service.dart'; // Import the centralized auth service
 
 class SearchPage extends StatefulWidget {
   final String requestType;
@@ -200,70 +201,11 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
     }
   }
 
-  Future<String> getAccessToken() async {
-    final serviceAccountJson = {
-      "type": "service_account",
-      "project_id": "dots-b3559",
-      "private_key_id": "9828916518aae6ee63dee0f5efb5bf1b990ddfba",
-      "private_key":
-          "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQC4gJhJcOQnDkvc\nP+RiDdSl7hYl3KBDlDo/hp1RyoxzKLqzwrqSRBEMFfZN7WIEUZJV/2whdOI7oEFt\n2Z5O+JeDqNblMw5WMTjlGHkDR3ZcDHrv9oIGjF4NXtkT36esXNjVbEUKbwLlD24K\nEpxZy6/zbXwiFieIPvzlZmd5Xo7fKxYqmetYiirOc8X5wSk/bLuKADGEOyHyamd/\n0HgBVsoVkoOTF2verBLdvib5UTvgnM2ov5xb/mnbbeAGlZALkieeSW1j4spGO4Sk\nwGO/6sFG2s91UTO113gi8YwHOAP2ae8ZMnTJle8seVg2iQebzLH+/Zj69hpIIKsQ\nDSLUxhzlAgMBAAECggEADHgqcqo1zTru3xWVXJglM0quRgRNc4vIzQLOzpiTGfRa\ne+ww+lIt2cSBNz6QJY0SyAuhdfhlktSPn3o59AniiZQnY+mpsiMU/ozDHvjdM7bn\nNyEQpBsn/xzWLHzs4t4KjJAK8XvTtQHwNK+R0BLPUzMm1NHs/Y0OP/3GCAKfQs9T\n0VhUHtq/BQZksAUU2ANAUbXpnoY7rBnPCwiL8kSTAptxQ6dbSskuCxLtqSZkqSxo\n4EsOfOUcB6WsV8y3+SutIAvPsWaDNxzUrzfGXfIRXdwO6+guRyN22OonLylfwddi\nhvGHZJlf+jUqcPOu/sSX6z2p0XZR13HwsXn4v6M4YQKBgQD1kl3mxX8hB5ra/uqL\njLbw9+000uMMiA158kllHaW87uRmlDfEFiQnj5FFhb0sXSPlvPm37f2ifnNlsa6a\ns6D63XZmAdWvTlGbzxK5NTlmKNvxSlN7G4L7/7M4wKc5JxGHrB7yV1T1XkdMtElH\nQx62iKmU5gnXBPAXYb8b1Da24QKBgQDAVlYzwWs/43ZRPkXIejFqZcmuQCfw+9OB\nfrKGOIXYlpCHQDxZ9w9DGYX5/xlAa8G6YRO+bjqF3RqdKAEcRs+XfhYTHj4j0ZOo\niDP7nnpQh6saVlVYlSSkziajE3C0bgjs62dw7R2zTVPVX+GSvzUaLUC4+x9sygea\n1pDUD85ahQKBgFGgTUYf75nzBS41/ZBVPZnrTxV347COqKwYNP0/VY/veEwAiGjN\nU0czGX6abb8JVp1Oq1LP8LbKgWEUJo2Vl7TLWEef5H9Y8RdxRS/62RF0E2eo5QbO\npkNNQy1iHDOLIPCP7dlv3fWRWPHOG21sihDybCvqKusl4QhknTmK2IUBAoGAXQAi\nNGpc+op45nXO9k4nYMQRDgGVjo+lyKLDneTsyzqabdugkvvEVHSd9LDlu+Gezgks\nq9LO13V+7eivCMYwkJb2A46HC3jGBiK9x/fsOs4u7NA7+lY7XrkTs5ytzYC7Lhvx\na4gr6UwFslHnV7a+7YZeGlPK8SaLINKJOxDdfaUCgYAUZIxpgvhgfY+NtgysDcGc\nxewumxc7Ba0kVyMFiYsI5DJxBDqkJ9L3aayunf8OvAj7sHzwY6QXjwE8PfEjZMYV\nhGZ25qU1Bvew7B+/Ic/pdvQ077qwANyxduife3ImF9uuXZPNG7RNn0yukXO4iElf\ne6CJGLr6YxGO2/6GKCPa7g==\n-----END PRIVATE KEY-----\n",
-      "client_email":
-          "firebase-adminsdk-ecgab@dots-b3559.iam.gserviceaccount.com",
-      "client_id": "106002613230535720514",
-      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-      "token_uri": "https://oauth2.googleapis.com/token",
-      "auth_provider_x509_cert_url":
-          "https://www.googleapis.com/oauth2/v1/certs",
-      "client_x509_cert_url":
-          "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-ecgab%40dots-b3559.iam.gserviceaccount.com",
-      "universe_domain": "googleapis.com",
-    };
-    List<String> scopes = [
-      "https://www.googleapis.com/auth/userinfo.email",
-      "https://www.googleapis.com/auth/firebase.database",
-      "https://www.googleapis.com/auth/firebase.messaging",
-    ];
-    http.Client client = await auth.clientViaServiceAccount(
-      auth.ServiceAccountCredentials.fromJson(serviceAccountJson),
-      scopes,
-    );
-    auth.AccessCredentials credentials = await auth
-        .obtainAccessCredentialsViaServiceAccount(
-          auth.ServiceAccountCredentials.fromJson(serviceAccountJson),
-          scopes,
-          client,
-        );
-    client.close();
-    return credentials.accessToken.data;
-  }
-
   Future<void> sendFCMMessage(String fcmToken, String requestId) async {
     try {
-      // Save request details to Firestore
-
-      await FirebaseFirestore.instance
-          .collection('active_requests')
-          .doc(requestId)
-          .set({
-            'clientId': FirebaseAuth.instance.currentUser?.uid,
-
-            'timestamp': FieldValue.serverTimestamp(),
-
-            'status': 'pending',
-
-            // Add other relevant request details
-          });
-
-      await FirebaseFirestore.instance.collection('active_requests').add({
-        'consultantId': fcmToken,
-        'requestId': requestId,
-        'title': 'New Client Request',
-        'body': 'You have a new client request!',
-        'status': 'Pending',
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-
-      final String serverKey = await getAccessToken(); // Get your server key
+      // Use the centralized auth service instead of inline credentials
+      final FirebaseAuthService authService = FirebaseAuthService();
+      final String serverKey = await authService.getAccessToken();
 
       final String fcmEndpoint =
           'https://fcm.googleapis.com/v1/projects/dots-b3559/messages:send';
@@ -311,11 +253,13 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
 
       if (response.statusCode == 200) {
         print('FCM message sent successfully to $fcmToken');
+        print('Response: ${response.body}');
       } else {
         print('Failed to send FCM message: ${response.statusCode}');
+        print('Error response: ${response.body}');
       }
     } catch (e) {
-      print('Error sending FCM message or saving to Firestore: $e');
+      print('Error sending FCM message: $e');
     }
   }
 
@@ -386,11 +330,24 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
           // Modified timer logic
           startTimer();
 
-          // Send FCM message to each consultant
+          // Send FCM message to each consultant with proper error handling
+          int successfulNotifications = 0;
           for (var consultant in consultantSnapshot.docs) {
-            String fcmToken = consultant['fcmToken'];
-            await sendFCMMessage(fcmToken, requestId);
+            try {
+              String? fcmToken = consultant.data()['fcmToken'];
+              if (fcmToken != null && fcmToken.isNotEmpty) {
+                await sendFCMMessage(fcmToken, requestId);
+                successfulNotifications++;
+                print('Notification sent to consultant: ${consultant.id}');
+              } else {
+                print('Consultant ${consultant.id} has no valid FCM token');
+              }
+            } catch (e) {
+              print('Failed to send notification to consultant ${consultant.id}: $e');
+            }
           }
+
+          print('Successfully sent $successfulNotifications out of ${consultantSnapshot.docs.length} notifications');
 
           // Listen for request status changes
           listenForRequestStatus(requestId);
