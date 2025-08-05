@@ -10,7 +10,12 @@ class ConsultantNotificationListener {
 
   static void startListening(BuildContext context) {
     final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
+    if (userId == null) {
+      print('No user ID found, cannot start notification listener');
+      return;
+    }
+
+    print('Starting notification listener for user: $userId');
 
     // Get consultant's industry type
     FirebaseFirestore.instance
@@ -20,7 +25,12 @@ class ConsultantNotificationListener {
         .then((doc) {
       if (doc.exists) {
         final industryType = doc.data()?['industry_type'] as String?;
-        if (industryType == null) return;
+        if (industryType == null) {
+          print('No industry type found for consultant: $userId');
+          return;
+        }
+
+        print('Listening for notifications in industry: $industryType');
 
         // Listen for new notifications matching the consultant's industry type
         _notificationSubscription?.cancel();
@@ -30,75 +40,106 @@ class ConsultantNotificationListener {
             .where('status', isEqualTo: 'searching')
             .snapshots()
             .listen((snapshot) async {
+          print('Received ${snapshot.docChanges.length} notification changes');
+          
           for (var change in snapshot.docChanges) {
             if (change.type == DocumentChangeType.added) {
               final data = change.doc.data() as Map<String, dynamic>;
               final requestId = change.doc.id;
 
+              print('New notification received: $requestId');
+
+              // Convert dynamic data to string payload
+              final payload = AppNotificationService.convertPayload({
+                'type': 'client_request',
+                'requestId': requestId,
+                'industry': industryType,
+                'timestamp': data['timestamp']?.toDate().toString() ?? '',
+                'clientId': data['clientId'] ?? '',
+                'consultantId': userId,
+              });
+
               // Show notification with Accept/Reject buttons
               await AppNotificationService.showNotification(
                 title: '📌 New Client Request',
                 body: 'New request in $industryType',
-                payload: {
-                  'type': 'client_request',
-                  'requestId': requestId,
-                  'industry': industryType,
-                  'timestamp': data['timestamp']?.toDate().toString() ?? '',
-                  'clientId': data['clientId'] ?? '',
-                  'consultantId': userId,
-                },
+                payload: payload,
+                channelKey: 'client_requests_channel',
                 actionButtons: [
                   NotificationActionButton(
                     key: 'ACCEPT',
                     label: 'Accept',
                     actionType: ActionType.Default,
+                    color: Colors.green,
                   ),
                   NotificationActionButton(
                     key: 'REJECT',
                     label: 'Reject',
                     actionType: ActionType.Default,
+                    color: Colors.red,
                   ),
                 ],
               );
             }
           }
+        }, onError: (error) {
+          print('Error in notification listener: $error');
         });
+      } else {
+        print('Consultant document not found for user: $userId');
       }
+    }).catchError((error) {
+      print('Error getting consultant data: $error');
     });
   }
 
   static void stopListening() {
     _notificationSubscription?.cancel();
+    _notificationSubscription = null;
+    print('Notification listener stopped');
   }
 
   static Future<void> handleNotificationAction(ReceivedAction action) async {
+    print('Handling notification action: ${action.buttonKeyPressed}');
+    
     final payload = action.payload ?? {};
     final requestId = payload['requestId'];
     final consultantId = payload['consultantId'];
 
-    if (requestId == null || consultantId == null) return;
-
-    if (action.buttonKeyPressed == 'ACCEPT') {
-      await FirebaseFirestore.instance
-          .collection('notifications')
-          .doc(requestId)
-          .update({
-        'status': 'accepted',
-        'acceptedConsultantId': consultantId,
-        'acceptedAt': FieldValue.serverTimestamp(),
-      });
-    } else if (action.buttonKeyPressed == 'REJECT') {
-      await FirebaseFirestore.instance
-          .collection('notifications')
-          .doc(requestId)
-          .update({
-        'status': 'rejected',
-        'rejectedBy': FieldValue.arrayUnion([consultantId]),
-        'rejectedAt': FieldValue.serverTimestamp(),
-      });
+    if (requestId == null || consultantId == null) {
+      print('Missing required payload data: requestId=$requestId, consultantId=$consultantId');
+      return;
     }
 
-    // Navigate to NotificationHandlerPage
-    await AppNotificationService.handleNotificationAction(payload);
+    try {
+      if (action.buttonKeyPressed == 'ACCEPT') {
+        print('Accepting request: $requestId');
+        await FirebaseFirestore.instance
+            .collection('notifications')
+            .doc(requestId)
+            .update({
+          'status': 'accepted',
+          'acceptedConsultantId': consultantId,
+          'acceptedAt': FieldValue.serverTimestamp(),
+        });
+        print('Request accepted successfully');
+      } else if (action.buttonKeyPressed == 'REJECT') {
+        print('Rejecting request: $requestId');
+        await FirebaseFirestore.instance
+            .collection('notifications')
+            .doc(requestId)
+            .update({
+          'status': 'rejected',
+          'rejectedBy': FieldValue.arrayUnion([consultantId]),
+          'rejectedAt': FieldValue.serverTimestamp(),
+        });
+        print('Request rejected successfully');
+      }
+
+      // Navigate to NotificationHandlerPage
+      await AppNotificationService.handleNotificationAction(payload);
+    } catch (e) {
+      print('Error handling notification action: $e');
+    }
   }
 }
