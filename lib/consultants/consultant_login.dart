@@ -1,5 +1,6 @@
 import 'dart:async';
-
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
@@ -46,6 +47,25 @@ class _ConsultantLoginPageState extends State<ConsultantLoginPage>
     });
   }
 
+  void setupFCMListeners() {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      // Convert Map<String, dynamic> to Map<String, String?>
+      final Map<String, String?> payload = message.data.map(
+        (key, value) => MapEntry(key, value?.toString()),
+      );
+
+      AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+          channelKey: 'basic_channel',
+          title: message.notification?.title ?? 'New Notification',
+          body: message.notification?.body ?? 'You have a new message',
+          payload: payload, // Use the converted payload
+        ),
+      );
+    });
+  }
+
   Future<void> _generateNewToken() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -77,7 +97,7 @@ class _ConsultantLoginPageState extends State<ConsultantLoginPage>
     super.initState();
     _initAnimations();
     _startTokenRefreshTimer();
-
+    setupFCMListeners();
     FirebaseMessaging.instance.onTokenRefresh.listen((newFcmToken) async {
       debugPrint('FCM token refreshed: $newFcmToken');
       await _updateFCMToken();

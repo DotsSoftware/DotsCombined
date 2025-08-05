@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/theme.dart';
+import 'verification_documents.dart';
 
 class BankingPage extends StatefulWidget {
   const BankingPage({Key? key}) : super(key: key);
@@ -10,7 +11,8 @@ class BankingPage extends StatefulWidget {
   _BankingPageState createState() => _BankingPageState();
 }
 
-class _BankingPageState extends State<BankingPage> with TickerProviderStateMixin {
+class _BankingPageState extends State<BankingPage>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _cardNumberController = TextEditingController();
   final TextEditingController _cardHolderController = TextEditingController();
@@ -42,19 +44,23 @@ class _BankingPageState extends State<BankingPage> with TickerProviderStateMixin
       CurvedAnimation(
         parent: _animationController,
         curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
-    ));
+      ),
+    );
 
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.3, 1.0, curve: Curves.elasticOut),
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: const Interval(0.3, 1.0, curve: Curves.elasticOut),
+          ),
+        );
 
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
-    ));
+      ),
+    );
 
     _animationController.forward();
   }
@@ -77,11 +83,12 @@ class _BankingPageState extends State<BankingPage> with TickerProviderStateMixin
       });
       try {
         final docSnapshot = await FirebaseFirestore.instance
-            .collection('consultant_side')
+            .collection('consultant_register')
             .doc(user.uid)
             .get();
 
-        if (docSnapshot.exists && docSnapshot.data()!.containsKey('bankDetails')) {
+        if (docSnapshot.exists &&
+            docSnapshot.data()!.containsKey('bankDetails')) {
           Map<String, dynamic> bankDetails = docSnapshot['bankDetails'];
           setState(() {
             _cardNumberController.text = bankDetails['cardNumber'] ?? '';
@@ -117,26 +124,35 @@ class _BankingPageState extends State<BankingPage> with TickerProviderStateMixin
         _errorMessage = null;
       });
       try {
-        await FirebaseFirestore.instance
-            .collection('consultant_side')
-            .doc(user.uid)
-            .set({
-              'bankDetails': {
-                'cardNumber': _cardNumberController.text,
-                'cardHolder': _cardHolderController.text,
-                'expiryDate': _expiryDateController.text,
-                'cvv': _cvvController.text,
-                'bankName': _bankName,
-                'lastUpdated': FieldValue.serverTimestamp(),
-              },
-            }, SetOptions(merge: true));
+        // Store the bank details in a map to pass to the next page
+        final bankDetails = {
+          'cardNumber': _cardNumberController.text,
+          'cardHolder': _cardHolderController.text,
+          'expiryDate': _expiryDateController.text,
+          'cvv': _cvvController.text,
+          'bankName': _bankName,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        };
 
+        // Save to Firestore
+        await FirebaseFirestore.instance
+            .collection('consultant_register')
+            .doc(user.uid)
+            .set({'bankDetails': bankDetails}, SetOptions(merge: true));
+
+        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Bank details saved successfully!'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
+        );
+
+        // Navigate to VerificationDocumentsPage with the bank details
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => VerificationDocumentsPage()),
         );
       } catch (e) {
         setState(() {
@@ -348,12 +364,13 @@ class _BankingPageState extends State<BankingPage> with TickerProviderStateMixin
                                   child: Image.network(
                                     'https://firebasestorage.googleapis.com/v0/b/dots-b3559.appspot.com/o/Dots%20logo.png?alt=media&token=2c2333ea-658a-4a70-9378-39c6c248f5ca',
                                     fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        const Icon(
-                                      Icons.error_outline,
-                                      color: Color(0xFF1E3A8A),
-                                      size: 40,
-                                    ),
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            const Icon(
+                                              Icons.error_outline,
+                                              color: Color(0xFF1E3A8A),
+                                              size: 40,
+                                            ),
                                   ),
                                 ),
                                 const SizedBox(height: 20),
@@ -413,28 +430,30 @@ class _BankingPageState extends State<BankingPage> with TickerProviderStateMixin
                                       ),
                                     ),
                                     value: _bankName,
-                                    items: [
-                                      'Absa',
-                                      'Capitec',
-                                      'First National Bank',
-                                      'Investec',
-                                      'Nedbank',
-                                      'Standard Bank',
-                                      'African Bank',
-                                      'Bidvest Bank',
-                                      'Discovery Bank',
-                                      'TymeBank',
-                                      'Other'
-                                    ].map((String value) {
-                                      return DropdownMenuItem<String>(
-                                        value: value,
-                                        child: Text(
-                                          value,
-                                          style: const TextStyle(
-                                            color: Colors.black),
-                                        ),
-                                      );
-                                    }).toList(),
+                                    items:
+                                        [
+                                          'Absa',
+                                          'Capitec',
+                                          'First National Bank',
+                                          'Investec',
+                                          'Nedbank',
+                                          'Standard Bank',
+                                          'African Bank',
+                                          'Bidvest Bank',
+                                          'Discovery Bank',
+                                          'TymeBank',
+                                          'Other',
+                                        ].map((String value) {
+                                          return DropdownMenuItem<String>(
+                                            value: value,
+                                            child: Text(
+                                              value,
+                                              style: const TextStyle(
+                                                color: Colors.black,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
                                     onChanged: (String? newValue) {
                                       setState(() {
                                         _bankName = newValue;
@@ -503,9 +522,7 @@ class _BankingPageState extends State<BankingPage> with TickerProviderStateMixin
                                       ),
                                     ),
                                     keyboardType: TextInputType.number,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                    ),
+                                    style: const TextStyle(color: Colors.white),
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
                                         return 'Please enter card number';
@@ -547,9 +564,7 @@ class _BankingPageState extends State<BankingPage> with TickerProviderStateMixin
                                         color: Colors.white.withOpacity(0.8),
                                       ),
                                     ),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                    ),
+                                    style: const TextStyle(color: Colors.white),
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
                                         return 'Please enter card holder name';
@@ -570,31 +585,37 @@ class _BankingPageState extends State<BankingPage> with TickerProviderStateMixin
                                               color: Colors.white,
                                             ),
                                             hintStyle: TextStyle(
-                                              color: Colors.white.withOpacity(0.5),
+                                              color: Colors.white.withOpacity(
+                                                0.5,
+                                              ),
                                             ),
                                             filled: true,
-                                            fillColor:
-                                                Colors.white.withOpacity(0.1),
+                                            fillColor: Colors.white.withOpacity(
+                                              0.1,
+                                            ),
                                             border: OutlineInputBorder(
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                               borderSide: BorderSide(
-                                                color:
-                                                    Colors.white.withOpacity(0.3),
+                                                color: Colors.white.withOpacity(
+                                                  0.3,
+                                                ),
                                               ),
                                             ),
                                             enabledBorder: OutlineInputBorder(
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                               borderSide: BorderSide(
-                                                color:
-                                                    Colors.white.withOpacity(0.3),
+                                                color: Colors.white.withOpacity(
+                                                  0.3,
+                                                ),
                                               ),
                                             ),
                                             prefixIcon: Icon(
                                               Icons.calendar_today_outlined,
-                                              color:
-                                                  Colors.white.withOpacity(0.8),
+                                              color: Colors.white.withOpacity(
+                                                0.8,
+                                              ),
                                             ),
                                           ),
                                           keyboardType: TextInputType.datetime,
@@ -602,11 +623,13 @@ class _BankingPageState extends State<BankingPage> with TickerProviderStateMixin
                                             color: Colors.white,
                                           ),
                                           validator: (value) {
-                                            if (value == null || value.isEmpty) {
+                                            if (value == null ||
+                                                value.isEmpty) {
                                               return 'Enter expiry date';
                                             }
-                                            if (!RegExp(r'^(0[1-9]|1[0-2])\/?([0-9]{2})$')
-                                                .hasMatch(value)) {
+                                            if (!RegExp(
+                                              r'^(0[1-9]|1[0-2])\/?([0-9]{2})$',
+                                            ).hasMatch(value)) {
                                               return 'Invalid format (MM/YY)';
                                             }
                                             return null;
@@ -624,31 +647,37 @@ class _BankingPageState extends State<BankingPage> with TickerProviderStateMixin
                                               color: Colors.white,
                                             ),
                                             hintStyle: TextStyle(
-                                              color: Colors.white.withOpacity(0.5),
+                                              color: Colors.white.withOpacity(
+                                                0.5,
+                                              ),
                                             ),
                                             filled: true,
-                                            fillColor:
-                                                Colors.white.withOpacity(0.1),
+                                            fillColor: Colors.white.withOpacity(
+                                              0.1,
+                                            ),
                                             border: OutlineInputBorder(
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                               borderSide: BorderSide(
-                                                color:
-                                                    Colors.white.withOpacity(0.3),
+                                                color: Colors.white.withOpacity(
+                                                  0.3,
+                                                ),
                                               ),
                                             ),
                                             enabledBorder: OutlineInputBorder(
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                               borderSide: BorderSide(
-                                                color:
-                                                    Colors.white.withOpacity(0.3),
+                                                color: Colors.white.withOpacity(
+                                                  0.3,
+                                                ),
                                               ),
                                             ),
                                             prefixIcon: Icon(
                                               Icons.lock_outline,
-                                              color:
-                                                  Colors.white.withOpacity(0.8),
+                                              color: Colors.white.withOpacity(
+                                                0.8,
+                                              ),
                                             ),
                                           ),
                                           keyboardType: TextInputType.number,
@@ -657,7 +686,8 @@ class _BankingPageState extends State<BankingPage> with TickerProviderStateMixin
                                             color: Colors.white,
                                           ),
                                           validator: (value) {
-                                            if (value == null || value.isEmpty) {
+                                            if (value == null ||
+                                                value.isEmpty) {
                                               return 'Enter CVV';
                                             }
                                             if (value.length < 3) {
@@ -727,10 +757,14 @@ class _BankingPageState extends State<BankingPage> with TickerProviderStateMixin
                                   borderRadius: BorderRadius.circular(24),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 20),
+                                      vertical: 20,
+                                    ),
                                     decoration: BoxDecoration(
                                       gradient: const LinearGradient(
-                                        colors: [Colors.white, Color(0xFFF0F0F0)],
+                                        colors: [
+                                          Colors.white,
+                                          Color(0xFFF0F0F0),
+                                        ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       ),

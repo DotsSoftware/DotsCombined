@@ -19,6 +19,8 @@ import 'request_database.dart';
 import 'request_type.dart';
 import 'inbox.dart';
 import 'wallet.dart';
+import '../utils/notification_service.dart'; // Added for AppNotificationService
+import '../consultants/consultant_notification_listener.dart'; // Added for ConsultantNotificationListener
 
 class ConsultantDashboardPage extends StatefulWidget {
   const ConsultantDashboardPage({Key? key}) : super(key: key);
@@ -110,6 +112,10 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
 
       setState(() {
         _isVerified = userDoc['applicationStatus'] == 'verified';
+        // Start notification listener for verified consultants
+        if (_isVerified) {
+          ConsultantNotificationListener.startListening(context);
+        }
       });
     }
   }
@@ -139,6 +145,8 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
     _animationController.dispose();
     _cardAnimationController.dispose();
     _bannerAd?.dispose();
+    // Stop the notification listener to prevent memory leaks
+    ConsultantNotificationListener.stopListening();
     super.dispose();
   }
 
@@ -393,6 +401,7 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
                 icon: Icons.exit_to_app,
                 title: 'Logout',
                 onTap: () async {
+                  ConsultantNotificationListener.stopListening(); // Stop listener before logout
                   await FirebaseAuth.instance.signOut();
                   Navigator.pushAndRemoveUntil(
                     context,

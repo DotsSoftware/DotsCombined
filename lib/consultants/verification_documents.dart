@@ -141,7 +141,7 @@ class _VerificationDocumentsPageState extends State<VerificationDocumentsPage>
       });
       try {
         final docSnapshot = await FirebaseFirestore.instance
-            .collection('consultant_side')
+            .collection('consultant_register')
             .doc(user.uid)
             .get();
 
@@ -518,7 +518,7 @@ class _VerificationDocumentsPageState extends State<VerificationDocumentsPage>
         final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
           await FirebaseFirestore.instance
-              .collection('consultant_side')
+              .collection('consultant_register')
               .doc(user.uid)
               .update({
                 'industry_documents': FieldValue.arrayUnion([
@@ -568,7 +568,7 @@ class _VerificationDocumentsPageState extends State<VerificationDocumentsPage>
         }
 
         await FirebaseFirestore.instance
-            .collection('consultant_side')
+            .collection('consultant_register')
             .doc(user.uid)
             .set({
               'isSouthAfricanCitizen': isSouthAfricanCitizen,

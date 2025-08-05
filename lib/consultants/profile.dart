@@ -175,131 +175,139 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Future<void> fetchUploadedDocuments() async {
-    if (user != null) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-      try {
-        final docSnapshot = await FirebaseFirestore.instance
-            .collection('consultant_side')
-            .doc(user!.uid)
-            .get();
+  if (user == null) return;
 
-        if (docSnapshot.exists) {
-          setState(() {
-            uploadedDocuments.clear();
-            _addDocumentIfExists(docSnapshot, 'idUrl', 'ID', 'idFileName');
-            _addDocumentIfExists(
-              docSnapshot,
-              'passportUrl',
-              'Passport',
-              'passportFileName',
-            );
-            _addDocumentIfExists(
-              docSnapshot,
-              'addressProofUrl',
-              'Proof of Address',
-              'addressProofFileName',
-            );
-            _addDocumentIfExists(
-              docSnapshot,
-              'driversLicenseUrl',
-              'Driver\'s License',
-              'driversLicenseFileName',
-            );
+  setState(() {
+    _isLoading = true;
+    _errorMessage = null;
+    uploadedDocuments.clear(); // Clear existing documents
+  });
 
-            if (docSnapshot.data()!.containsKey('additionalFiles')) {
-              List<dynamic> additionalFiles = docSnapshot['additionalFiles'];
-              for (var file in additionalFiles) {
-                uploadedDocuments.add({
-                  'url': file['url'],
-                  'name': file['name'],
-                  'type': 'Other',
-                });
-              }
-            }
-          });
+  try {
+    final docSnapshot = await FirebaseFirestore.instance
+        .collection('consultant_register')
+        .doc(user!.uid)
+        .get();
+
+    if (docSnapshot.exists) {
+      final data = docSnapshot.data() ?? {};
+
+      // Safely check each document type (won't throw if field doesn't exist)
+      _addDocumentIfExists(data, 'idUrl', 'ID', 'idFileName');
+      _addDocumentIfExists(data, 'passportUrl', 'Passport', 'passportFileName');
+      _addDocumentIfExists(data, 'addressProofUrl', 'Proof of Address', 'addressProofFileName');
+      _addDocumentIfExists(data, 'driversLicenseUrl', 'Driver\'s License', 'driversLicenseFileName');
+
+      // Handle additional files safely
+      if (data.containsKey('additionalFiles')) {
+        final additionalFiles = data['additionalFiles'] as List? ?? [];
+        for (var file in additionalFiles) {
+          if (file is Map<String, dynamic>) {
+            uploadedDocuments.add({
+              'url': file['url']?.toString() ?? '',
+              'name': file['name']?.toString() ?? 'Document',
+              'type': file['type']?.toString() ?? 'Other',
+            });
+          }
         }
-      } catch (e) {
-        setState(() {
-          _errorMessage = 'Failed to fetch documents: $e';
-        });
-      } finally {
-        setState(() {
-          _isLoading = false;
-        });
       }
     }
+  } catch (e) {
+    debugPrint('Error fetching documents: $e');
+    // Don't show error to user if no documents exist - it's a normal case
+    if (!e.toString().contains('does not exist')) {
+      setState(() {
+        _errorMessage = 'Failed to fetch documents';
+      });
+    }
+  } finally {
+    setState(() {
+      _isLoading = false;
+    });
   }
+}
 
-  void _addDocumentIfExists(
-    DocumentSnapshot docSnapshot,
-    String urlKey,
-    String type,
-    String nameKey,
-  ) {
-    final url = docSnapshot[urlKey];
-    final name = docSnapshot[nameKey] ?? type;
+void _addDocumentIfExists(
+  Map<String, dynamic> data, 
+  String urlKey, 
+  String type, 
+  String nameKey,
+) {
+  if (data.containsKey(urlKey)) {
+    final url = data[urlKey]?.toString();
     if (url != null && url.isNotEmpty) {
-      uploadedDocuments.add({'url': url, 'name': name, 'type': type});
+      final name = data.containsKey(nameKey) 
+          ? data[nameKey]?.toString() 
+          : type;
+      uploadedDocuments.add({
+        'url': url,
+        'name': name ?? type,
+        'type': type,
+      });
     }
   }
+}
+
+  
 
   Future<void> _uploadNewDocument() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles();
-      if (result != null) {
-        File file = File(result.files.single.path!);
-        String fileName =
-            '${user!.uid}/additional_docs/${DateTime.now().millisecondsSinceEpoch}';
-        final storageRef = FirebaseStorage.instance.ref().child(fileName);
-        await storageRef.putFile(file);
-        String fileUrl = await storageRef.getDownloadURL();
+  if (user == null) return;
 
-        final docRef = FirebaseFirestore.instance
-            .collection('consultant_side')
-            .doc(user!.uid);
+  setState(() {
+    _isLoading = true;
+    _errorMessage = null;
+  });
 
-        final currentDoc = await docRef.get();
-        List<dynamic> additionalFiles =
-            currentDoc.data()?['additionalFiles'] ?? [];
-        additionalFiles.add({'url': fileUrl, 'name': result.files.single.name});
+  try {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+    if (result != null) {
+      File file = File(result.files.single.path!);
+      String fileName = '${user!.uid}/additional_docs/${DateTime.now().millisecondsSinceEpoch}_${result.files.single.name}';
+      
+      // Upload file to storage
+      final storageRef = FirebaseStorage.instance.ref().child(fileName);
+      await storageRef.putFile(file);
+      String fileUrl = await storageRef.getDownloadURL();
 
-        await docRef.set({
-          'additionalFiles': additionalFiles,
-        }, SetOptions(merge: true));
+      // Update Firestore
+      final docRef = FirebaseFirestore.instance
+          .collection('consultant_register')
+          .doc(user!.uid);
 
-        setState(() {
-          uploadedDocuments.add({
-            'url': fileUrl,
-            'name': result.files.single.name,
-            'type': selectedDocumentType,
-          });
+      await docRef.set({
+        'additionalFiles': FieldValue.arrayUnion([{
+          'url': fileUrl,
+          'name': result.files.single.name,
+          'type': selectedDocumentType,
+        }])
+      }, SetOptions(merge: true));
+
+      // Update local state
+      setState(() {
+        uploadedDocuments.add({
+          'url': fileUrl,
+          'name': result.files.single.name,
+          'type': selectedDocumentType,
         });
+      });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Document uploaded successfully'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to upload document: $e';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Document uploaded successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
     }
+  } catch (e) {
+    setState(() {
+      _errorMessage = 'Failed to upload document: ${e.toString()}';
+    });
+  } finally {
+    setState(() {
+      _isLoading = false;
+    });
   }
+}
 
   Future<void> _removeDocument(Map<String, String> document) async {
     setState(() {
@@ -308,7 +316,7 @@ class _ProfilePageState extends State<ProfilePage>
     });
     try {
       final docRef = FirebaseFirestore.instance
-          .collection('consultant_side')
+          .collection('consultant_register')
           .doc(user!.uid);
 
       final currentDoc = await docRef.get();
@@ -649,163 +657,118 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _documentsSection() {
-    return _buildModernCard(
-      title: 'Uploaded Documents',
-      icon: Icons.upload_file_outlined,
-      child: Column(
-        children: [
-          uploadedDocuments.isEmpty
-              ? Text(
-                  'No documents uploaded yet',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 16,
+  return _buildModernCard(
+    title: 'Uploaded Documents',
+    icon: Icons.upload_file_outlined,
+    child: Column(
+      children: [
+        // Display documents if they exist, otherwise show friendly message
+        if (uploadedDocuments.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Text(
+              'No documents uploaded yet',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 16,
+              ),
+            ),
+          )
+        else
+          Column(
+            children: uploadedDocuments.map((document) {
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
                   ),
-                )
-              : Column(
-                  children: uploadedDocuments.map((document) {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Row(
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  document['name'] ?? 'Unnamed Document',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  document['type'] ?? 'Unspecified Type',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.7),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
+                          Text(
+                            document['name'] ?? 'Document',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () => _removeDocument(document),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                child: Icon(
-                                  Icons.delete,
-                                  color: Colors.red.withOpacity(0.8),
-                                  size: 24,
-                                ),
-                              ),
+                          Text(
+                            document['type'] ?? 'Other',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.7),
+                              fontSize: 14,
                             ),
                           ),
                         ],
                       ),
-                    );
-                  }).toList(),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.delete, color: Colors.red.withOpacity(0.8)),
+                      onPressed: () => _removeDocument(document),
+                    ),
+                  ],
                 ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: selectedDocumentType,
-                  decoration: InputDecoration(
-                    labelText: 'Document Type',
-                    labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(
-                        color: Colors.white.withOpacity(0.3),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Colors.white),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.1),
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: 16,
-                      horizontal: 20,
-                    ),
-                  ),
-                  dropdownColor: Colors.white.withOpacity(0.9),
-                  style: const TextStyle(color: Colors.white),
-                  items: documentTypes.map((type) {
-                    return DropdownMenuItem(value: type, child: Text(type));
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedDocumentType = value!;
-                    });
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _uploadNewDocument,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 16,
-                      horizontal: 20,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.upload_file,
-                          color: const Color(0xFF1E3A8A),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Upload',
-                          style: TextStyle(
-                            color: const Color(0xFF1E3A8A),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              );
+            }).toList(),
           ),
-        ],
-      ),
-    );
-  }
+        
+        const SizedBox(height: 16),
+        
+        // Document upload controls
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: selectedDocumentType,
+                decoration: InputDecoration(
+                  labelText: 'Document Type',
+                  labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: Colors.white.withOpacity(0.3),
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.1),
+                ),
+                items: documentTypes.map((type) {
+                  return DropdownMenuItem(
+                    value: type,
+                    child: Text(type, style: const TextStyle(color: Colors.white)),
+                  );
+                }).toList(),
+                onChanged: (value) => setState(() => selectedDocumentType = value!),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.upload_file, size: 20),
+              label: const Text('Upload'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF1E3A8A),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _uploadNewDocument,
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
   Color _getLevelColor(int? level) {
     switch (level) {
