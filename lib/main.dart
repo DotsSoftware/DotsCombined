@@ -2,7 +2,6 @@ import 'package:dots/utils/notification_handler_page.dart';
 import 'package:flutter/material.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -14,18 +13,13 @@ import 'firebase_options.dart';
 import 'user_type.dart';
 import 'utils/notification_service.dart';
 
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
-
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await AppNotificationService.initialize();
 
   // Convert Map<String, dynamic> to Map<String, String>
-  final payload = message.data.map(
-    (key, value) => MapEntry(key, value?.toString() ?? ''),
-  );
+  final payload = AppNotificationService.convertPayload(message.data);
 
   await AppNotificationService.showNotification(
     title: message.notification?.title ?? 'New Request',
@@ -70,16 +64,6 @@ Future<void> main() async {
 }
 
 Future<void> setupNotifications() async {
-  // Note: flutter_local_notifications may be redundant if using awesome_notifications
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-
-  final InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-  );
-
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-
   await FirebaseMessaging.instance.requestPermission(
     alert: true,
     badge: true,
@@ -87,10 +71,10 @@ Future<void> setupNotifications() async {
   );
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    print('Received foreground message: ${message.notification?.title}');
+    
     // Convert Map<String, dynamic> to Map<String, String>
-    final payload = message.data.map(
-      (key, value) => MapEntry(key, value?.toString() ?? ''),
-    );
+    final payload = AppNotificationService.convertPayload(message.data);
 
     AppNotificationService.showNotification(
       title: message.notification?.title ?? 'New Notification',
@@ -100,10 +84,10 @@ Future<void> setupNotifications() async {
   });
 
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    print('App opened from notification: ${message.notification?.title}');
+    
     // Convert Map<String, dynamic> to Map<String, String>
-    final payload = message.data.map(
-      (key, value) => MapEntry(key, value?.toString() ?? ''),
-    );
+    final payload = AppNotificationService.convertPayload(message.data);
 
     // Directly call handleNotificationAction with the payload
     AppNotificationService.handleNotificationAction(payload);
@@ -124,6 +108,7 @@ Future<void> storeFcmTokenInFirestore(String uid, String? fcmToken) async {
         SetOptions(merge: true),
       ),
     ]);
+    print('FCM token stored successfully for user: $uid');
   } catch (e) {
     print('Error storing FCM token: $e');
   }

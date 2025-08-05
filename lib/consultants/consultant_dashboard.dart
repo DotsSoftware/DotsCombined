@@ -53,6 +53,11 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
       'page': AppointmentDatabase(),
     },
     {'icon': Icons.work_outline, 'title': 'Jobs', 'page': RequestDatabase()},
+    {
+      'icon': Icons.bug_report_outlined,
+      'title': 'Test Notifications',
+      'page': null, // Will be handled specially
+    },
   ];
 
   @override
@@ -138,6 +143,43 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
         },
       ),
     )..load();
+  }
+
+  Future<void> _testNotificationSystem() async {
+    try {
+      // Check permissions first
+      bool hasPermission = await AppNotificationService.checkNotificationPermissions();
+      if (!hasPermission) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Notification permissions not granted. Please enable notifications in settings.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // List available channels
+      await AppNotificationService.listNotificationChannels();
+
+      // Test the notification system
+      await AppNotificationService.testNotificationSystem();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Test notifications sent! Check your notification panel.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print('Error testing notification system: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error testing notifications: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -700,12 +742,18 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
                             return _buildQuickActionCard(
                               icon: item['icon'],
                               title: item['title'],
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => item['page'],
-                                ),
-                              ),
+                              onTap: () {
+                                if (item['title'] == 'Test Notifications') {
+                                  _testNotificationSystem();
+                                } else {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => item['page'],
+                                    ),
+                                  );
+                                }
+                              },
                               index: index,
                               isEnabled: isEnabled,
                             );
