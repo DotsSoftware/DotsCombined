@@ -128,9 +128,9 @@ Notification sent successfully: [title]
    await AppNotificationService.testNotificationSystem();
    ```
 
-3. **Check Channels**:
+3. **Check System Status**:
    ```dart
-   await AppNotificationService.listNotificationChannels();
+   await AppNotificationService.checkNotificationSystemStatus();
    ```
 
 4. **Verify Firebase Setup**:

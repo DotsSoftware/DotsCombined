@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'password.dart';
 import '../utils/theme.dart'; // Assuming this contains the appGradient
+import '../utils/notification_service.dart'; // Added for AppNotificationService
 
 class ConsultantLoginPage extends StatefulWidget {
   const ConsultantLoginPage({Key? key}) : super(key: key);
@@ -50,14 +51,12 @@ class _ConsultantLoginPageState extends State<ConsultantLoginPage>
   void setupFCMListeners() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       // Convert Map<String, dynamic> to Map<String, String?>
-      final Map<String, String?> payload = message.data.map(
-        (key, value) => MapEntry(key, value?.toString()),
-      );
+      final Map<String, String?> payload = AppNotificationService.convertPayload(message.data);
 
       AwesomeNotifications().createNotification(
         content: NotificationContent(
           id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
-          channelKey: 'basic_channel',
+          channelKey: 'high_importance_channel',
           title: message.notification?.title ?? 'New Notification',
           body: message.notification?.body ?? 'You have a new message',
           payload: payload, // Use the converted payload

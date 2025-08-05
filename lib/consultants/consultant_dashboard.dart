@@ -159,8 +159,8 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
         return;
       }
 
-      // List available channels
-      await AppNotificationService.listNotificationChannels();
+      // Check notification system status
+      await AppNotificationService.checkNotificationSystemStatus();
 
       // Test the notification system
       await AppNotificationService.testNotificationSystem();
