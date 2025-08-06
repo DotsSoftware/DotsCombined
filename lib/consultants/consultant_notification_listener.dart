@@ -57,12 +57,16 @@ class ConsultantNotificationListener {
                 'timestamp': data['timestamp']?.toDate().toString() ?? '',
                 'clientId': data['clientId'] ?? '',
                 'consultantId': userId,
+                'jobDate': data['jobDate'] ?? '',
+                'jobTime': data['jobTime'] ?? '',
+                'siteLocation': data['siteLocation'] ?? '',
+                'jobDescription': data['jobDescription'] ?? '',
               });
 
               // Show notification with Accept/Reject buttons
               await AppNotificationService.showNotification(
                 title: '📌 New Client Request',
-                body: 'New request in $industryType',
+                body: 'New request in $industryType - ${data['siteLocation'] ?? 'Location not specified'}',
                 payload: payload,
                 channelKey: 'client_requests_channel',
                 actionButtons: [
@@ -140,6 +144,37 @@ class ConsultantNotificationListener {
       await AppNotificationService.handleNotificationAction(payload);
     } catch (e) {
       print('Error handling notification action: $e');
+    }
+  }
+
+  // Method to handle background notifications
+  static Future<void> handleBackgroundNotification(Map<String, dynamic> data) async {
+    try {
+      final requestId = data['requestId'];
+      final industryType = data['industry'];
+      final clientId = data['clientId'];
+      final consultantId = data['consultantId'];
+
+      if (requestId != null && industryType != null) {
+        // Save notification to Firestore for the consultant to see
+        await FirebaseFirestore.instance
+            .collection('notifications')
+            .doc(requestId)
+            .set({
+          'clientId': clientId,
+          'industry_type': industryType,
+          'timestamp': FieldValue.serverTimestamp(),
+          'status': 'searching',
+          'jobDate': data['jobDate'] ?? '',
+          'jobTime': data['jobTime'] ?? '',
+          'siteLocation': data['siteLocation'] ?? '',
+          'jobDescription': data['jobDescription'] ?? '',
+        }, SetOptions(merge: true));
+
+        print('Background notification saved to Firestore: $requestId');
+      }
+    } catch (e) {
+      print('Error handling background notification: $e');
     }
   }
 }

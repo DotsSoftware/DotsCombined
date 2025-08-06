@@ -19,8 +19,9 @@ import 'request_database.dart';
 import 'request_type.dart';
 import 'inbox.dart';
 import 'wallet.dart';
-import '../utils/notification_service.dart'; // Added for AppNotificationService
-import '../consultants/consultant_notification_listener.dart'; // Added for ConsultantNotificationListener
+import '../utils/notification_service.dart';
+import '../utils/data_optimization_service.dart';
+import '../consultants/consultant_notification_listener.dart';
 
 class ConsultantDashboardPage extends StatefulWidget {
   const ConsultantDashboardPage({Key? key}) : super(key: key);
@@ -35,6 +36,7 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
   bool _isVerified = false;
+  String? _consultantIndustryType;
   late AnimationController _animationController;
   late AnimationController _cardAnimationController;
   late Animation<double> _fadeInAnimation;
@@ -110,18 +112,25 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
   Future<void> _checkVerificationStatus() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('consultant_register')
-          .doc(user.uid)
-          .get();
+      // Use optimized data service
+      final consultantData = await DataOptimizationService.getConsultantData(user.uid);
+      
+      if (consultantData != null) {
+        setState(() {
+          _isVerified = consultantData['applicationStatus'] == 'verified';
+          _consultantIndustryType = consultantData['industry_type'];
+        });
 
-      setState(() {
-        _isVerified = userDoc['applicationStatus'] == 'verified';
         // Start notification listener for verified consultants
-        if (_isVerified) {
+        if (_isVerified && _consultantIndustryType != null) {
+          print('Starting notification listener for verified consultant in industry: $_consultantIndustryType');
           ConsultantNotificationListener.startListening(context);
+        } else {
+          print('Consultant not verified or missing industry type. Verified: $_isVerified, Industry: $_consultantIndustryType');
         }
-      });
+      } else {
+        print('No consultant data found for user: ${user.uid}');
+      }
     }
   }
 

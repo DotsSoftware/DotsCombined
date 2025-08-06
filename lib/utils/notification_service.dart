@@ -15,30 +15,38 @@ class AppNotificationService {
   AppNotificationService._internal();
 
   static Future<void> initialize() async {
-    await AwesomeNotifications().initialize(null, [
-      NotificationChannel(
-        channelKey: 'high_importance_channel',
-        channelName: 'High Importance Notifications',
-        channelDescription: 'Notification channel for important messages',
-        defaultColor: const Color(0xFF1E3A8A),
-        ledColor: Colors.white,
-        importance: NotificationImportance.High,
-        playSound: true,
-        enableVibration: true,
-        channelShowBadge: true,
-      ),
-      NotificationChannel(
-        channelKey: 'client_requests_channel',
-        channelName: 'Client Requests',
-        channelDescription: 'Notifications for new client requests',
-        defaultColor: const Color(0xFF059669),
-        ledColor: Colors.white,
-        importance: NotificationImportance.High,
-        playSound: true,
-        enableVibration: true,
-        channelShowBadge: true,
-      ),
-    ], debug: true);
+    await AwesomeNotifications().initialize(
+      null, // null for default app icon
+      [
+        NotificationChannel(
+          channelKey: 'high_importance_channel',
+          channelName: 'High Importance Notifications',
+          channelDescription: 'Notification channel for important messages',
+          defaultColor: const Color(0xFF1E3A8A),
+          ledColor: Colors.white,
+          importance: NotificationImportance.High,
+          playSound: true,
+          enableVibration: true,
+          channelShowBadge: true,
+          enableLights: true,
+          icon: 'resource://drawable/launcher_icon', // Use app icon
+        ),
+        NotificationChannel(
+          channelKey: 'client_requests_channel',
+          channelName: 'Client Requests',
+          channelDescription: 'Notifications for new client requests',
+          defaultColor: const Color(0xFF059669),
+          ledColor: Colors.white,
+          importance: NotificationImportance.High,
+          playSound: true,
+          enableVibration: true,
+          channelShowBadge: true,
+          enableLights: true,
+          icon: 'resource://drawable/launcher_icon', // Use app icon
+        ),
+      ],
+      debug: true,
+    );
 
     await _requestNotificationPermissions();
     await _configureNotificationActions();
@@ -58,6 +66,7 @@ class AppNotificationService {
         NotificationPermission.Badge,
         NotificationPermission.Vibration,
         NotificationPermission.Light,
+        NotificationPermission.CriticalAlert,
       ],
     );
   }
@@ -113,6 +122,8 @@ class AppNotificationService {
           criticalAlert: true,
           wakeUpScreen: true,
           autoDismissible: false,
+          icon: 'resource://drawable/launcher_icon', // Use app icon
+          largeIcon: 'resource://drawable/launcher_icon', // Use app icon for large icon
         ),
         actionButtons: actionButtons,
       );
@@ -179,15 +190,6 @@ class AppNotificationService {
     return isAllowed;
   }
 
-  // Get notification channels (removed - method doesn't exist in awesome_notifications)
-  // static Future<void> listNotificationChannels() async {
-  //   final channels = await AwesomeNotifications().listChannels();
-  //   print('Available notification channels:');
-  //   for (var channel in channels) {
-  //     print('- ${channel.channelKey}: ${channel.channelName}');
-  //   }
-  // }
-
   // Alternative method to check notification system status
   static Future<void> checkNotificationSystemStatus() async {
     print('=== Notification System Status Check ===');
@@ -221,11 +223,76 @@ class AppNotificationService {
           title: 'Channel Test',
           body: 'Testing channel: $channelKey',
           notificationLayout: NotificationLayout.Default,
+          icon: 'resource://drawable/launcher_icon', // Use app icon
         ),
       );
       print('✅ Test notification sent to channel: $channelKey');
     } catch (e) {
       print('❌ Error sending test notification to channel $channelKey: $e');
+    }
+  }
+
+  // Method to send client request notifications to consultants
+  static Future<void> sendClientRequestNotification({
+    required String requestId,
+    required String industryType,
+    required String clientId,
+    required String jobDate,
+    required String jobTime,
+    required String siteLocation,
+    required String jobDescription,
+  }) async {
+    try {
+      // Get all consultants in the specified industry
+      QuerySnapshot consultantSnapshot = await FirebaseFirestore.instance
+          .collection('consultant_register')
+          .where('industry_type', isEqualTo: industryType)
+          .where('applicationStatus', isEqualTo: 'verified')
+          .get();
+
+      for (var consultant in consultantSnapshot.docs) {
+        String consultantId = consultant.id;
+        
+        // Convert dynamic data to string payload
+        final payload = convertPayload({
+          'type': 'client_request',
+          'requestId': requestId,
+          'industry': industryType,
+          'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
+          'clientId': clientId,
+          'consultantId': consultantId,
+          'jobDate': jobDate,
+          'jobTime': jobTime,
+          'siteLocation': siteLocation,
+          'jobDescription': jobDescription,
+        });
+
+        // Show notification with Accept/Reject buttons
+        await showNotification(
+          title: '📌 New Client Request',
+          body: 'New request in $industryType - $siteLocation',
+          payload: payload,
+          channelKey: 'client_requests_channel',
+          actionButtons: [
+            NotificationActionButton(
+              key: 'ACCEPT',
+              label: 'Accept',
+              actionType: ActionType.Default,
+              color: Colors.green,
+            ),
+            NotificationActionButton(
+              key: 'REJECT',
+              label: 'Reject',
+              actionType: ActionType.Default,
+              color: Colors.red,
+            ),
+          ],
+        );
+
+        print('Notification sent to consultant: $consultantId');
+      }
+    } catch (e) {
+      print('Error sending client request notifications: $e');
     }
   }
 }

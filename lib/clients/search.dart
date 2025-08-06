@@ -187,43 +187,56 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
     return; // Explicit return to satisfy Future<void>
   }
 
-  Future<void> sendAwesomeNotification(
-    String consultantId,
-    String requestId,
-  ) async {
+  Future<void> sendAwesomeNotification(String consultantId, String requestId) async {
     try {
-      // Save notification details to Firestore for consultants to pick up
-      await FirebaseFirestore.instance
-          .collection('notifications')
-          .doc(requestId)
-          .set({
-            'clientId': FirebaseAuth.instance.currentUser?.uid ?? '',
-            'timestamp': FieldValue.serverTimestamp(),
-            'status': 'searching',
-            'industry_type': widget.industryType,
-            'consultantId': consultantId, // Store consultant ID for tracking
-          }, SetOptions(merge: true));
+      // Get consultant's FCM token
+      DocumentSnapshot consultantDoc = await FirebaseFirestore.instance
+          .collection('consultant_register')
+          .doc(consultantId)
+          .get();
 
-      // Display local notification for the client (for confirmation/testing)
-      await AppNotificationService.showNotification(
-        title: '📌 Request Created',
-        body: 'Your request in ${widget.industryType} has been sent',
-        payload: {
-          'type': 'client_confirmation',
-          'requestId': requestId,
-          'industry': widget.industryType,
-          'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
-          'consultantId': consultantId,
-          'clientId': FirebaseAuth.instance.currentUser?.uid ?? '',
-        },
+      if (!consultantDoc.exists) {
+        print('Consultant document not found: $consultantId');
+        return;
+      }
+
+      final consultantData = consultantDoc.data() as Map<String, dynamic>;
+      final fcmToken = consultantData['fcmToken'] as String?;
+
+      if (fcmToken == null || fcmToken.isEmpty) {
+        print('No FCM token found for consultant: $consultantId');
+        return;
+      }
+
+      // Get appointment details for notification
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      QuerySnapshot appointmentSnapshot = await FirebaseFirestore.instance
+          .collection('selection')
+          .doc(userId)
+          .collection('appointments')
+          .orderBy('timestamp', descending: true)
+          .limit(1)
+          .get();
+
+      Map<String, dynamic> appointmentData = {};
+      if (appointmentSnapshot.docs.isNotEmpty) {
+        appointmentData = appointmentSnapshot.docs.first.data() as Map<String, dynamic>;
+      }
+
+      // Use the improved notification service
+      await AppNotificationService.sendClientRequestNotification(
+        requestId: requestId,
+        industryType: widget.industryType,
+        clientId: FirebaseAuth.instance.currentUser?.uid ?? '',
+        jobDate: appointmentData['jobDate'] ?? '',
+        jobTime: appointmentData['jobTime'] ?? '',
+        siteLocation: appointmentData['siteLocation'] ?? '',
+        jobDescription: appointmentData['jobDescription'] ?? '',
       );
 
-      print('Local Awesome Notification created for client confirmation');
+      print('Awesome Notification sent to consultant: $consultantId');
     } catch (e) {
-      print('Error creating Awesome Notification or saving to Firestore: $e');
-      setState(() {
-        errorMessage = 'Failed to create notification';
-      });
+      print('Error sending Awesome Notification to consultant $consultantId: $e');
     }
   }
 
