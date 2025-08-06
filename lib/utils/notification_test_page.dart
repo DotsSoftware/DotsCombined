@@ -1,5 +1,9 @@
-/*import 'package:flutter/material.dart';
 import 'notification_helper.dart';
+import 'onesignal_service.dart';
+import 'notification_service.dart';
+import 'notification_config.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class NotificationTestPage extends StatefulWidget {
   @override
@@ -15,135 +19,279 @@ class _NotificationTestPageState extends State<NotificationTestPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Notification Test'),
-        backgroundColor: Color.fromARGB(225, 0, 74, 173),
+        backgroundColor: const Color(0xFF1E3A8A),
         foregroundColor: Colors.white,
       ),
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Card(
               child: Padding(
-                padding: EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Push Notification Test',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      'Notification Testing',
+                      style: Theme.of(context).textTheme.headlineSmall,
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       'Use these buttons to test and verify push notifications are working properly.',
-                      style: TextStyle(color: Colors.grey[600]),
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
                 ),
               ),
             ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _checkNotificationStatus,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color.fromARGB(225, 0, 74, 173),
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: Text('Check Notification Status'),
-            ),
-            SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _requestPermissions,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: Text('Request Permissions'),
-            ),
-            SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _getFcmToken,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: Text('Get FCM Token'),
-            ),
-            SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _showTestNotification,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: Text('Show Test Notification'),
-            ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
+            
+            // OneSignal Tests
             Card(
               child: Padding(
-                padding: EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'OneSignal Tests',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: const Color(0xFF1E3A8A),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _checkOneSignalStatus,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E3A8A),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                      child: Text('Check OneSignal Status'),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _requestOneSignalPermissions,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF059669),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                      child: Text('Request OneSignal Permissions'),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _testOneSignalNotification,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFDC2626),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                      child: Text('Test OneSignal Notification'),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _testOneSignalIndustryNotification,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF7C3AED),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                      child: Text('Test OneSignal Industry Notification'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Existing Notification Tests
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Existing Notification Tests',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: const Color(0xFF1E3A8A),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _checkNotificationStatus,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E3A8A),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                      child: Text('Check Notification Status'),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _requestPermissions,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF059669),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                      child: Text('Request Permissions'),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _getFcmToken,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFDC2626),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                      child: Text('Get FCM Token'),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _showTestNotification,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF7C3AED),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                      child: Text('Show Test Notification'),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _testNotificationSystem,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF59E0B),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                      child: Text('Test Complete Notification System'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Status Display
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Status',
-                      style: TextStyle(
-                        fontSize: 16,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: const Color(0xFF1E3A8A),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 8),
-                    if (_isLoading)
-                      Row(
-                        children: [
-                          SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          SizedBox(width: 8),
-                          Text('Loading...'),
-                        ],
-                      )
-                    else
-                      Text(
-                        _statusText,
-                        style: TextStyle(color: Colors.grey[700]),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
                       ),
+                      child: Text(
+                        _statusText,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
-            Spacer(),
+            
+            const SizedBox(height: 16),
+            
+            // Configuration Status
             Card(
-              color: Colors.blue[50],
               child: Padding(
-                padding: EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Troubleshooting Tips:',
-                      style: TextStyle(
-                        fontSize: 16,
+                      'Configuration Status',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: const Color(0xFF1E3A8A),
                         fontWeight: FontWeight.bold,
-                        color: Colors.blue[800],
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: NotificationConfig.isOneSignalConfigured 
+                            ? Colors.green[50] 
+                            : Colors.orange[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: NotificationConfig.isOneSignalConfigured 
+                              ? Colors.green[300]! 
+                              : Colors.orange[300]!,
+                        ),
+                      ),
+                      child: Text(
+                        NotificationConfig.validationMessage,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: NotificationConfig.isOneSignalConfigured 
+                              ? Colors.green[700] 
+                              : Colors.orange[700],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Instructions
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Instructions',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: const Color(0xFF1E3A8A),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Text(
                       '• Make sure you have granted notification permissions\n'
-                      '• Check that you are logged in to the app\n'
-                      '• Verify your device has internet connection\n'
-                      '• Check the console logs for detailed error messages',
-                      style: TextStyle(color: Colors.blue[700]),
+                      '• Test both OneSignal and existing notification systems\n'
+                      '• Check that notifications appear whether app is open or closed\n'
+                      '• Verify that notification actions (Accept/Reject) work properly\n'
+                      '• Test industry-specific notifications for consultants\n'
+                      '• Update OneSignal App ID in notification_config.dart if needed',
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
                 ),
@@ -155,6 +303,108 @@ class _NotificationTestPageState extends State<NotificationTestPage> {
     );
   }
 
+  // OneSignal Test Methods
+  Future<void> _checkOneSignalStatus() async {
+    setState(() {
+      _isLoading = true;
+      _statusText = 'Checking OneSignal status...';
+    });
+
+    try {
+      bool isSubscribed = await OneSignalService.isSubscribed();
+      String? playerId = await OneSignalService.getCurrentPlayerId();
+      
+      setState(() {
+        _statusText = 'OneSignal Status:\n'
+            '• Subscribed: $isSubscribed\n'
+            '• Player ID: ${playerId ?? 'Not available'}';
+      });
+    } catch (e) {
+      setState(() {
+        _statusText = 'Error checking OneSignal status: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _requestOneSignalPermissions() async {
+    setState(() {
+      _isLoading = true;
+      _statusText = 'Requesting OneSignal permissions...';
+    });
+
+    try {
+      bool granted = await OneSignalService.requestPermissions();
+      setState(() {
+        _statusText = 'OneSignal permissions granted: $granted';
+      });
+    } catch (e) {
+      setState(() {
+        _statusText = 'Error requesting OneSignal permissions: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _testOneSignalNotification() async {
+    setState(() {
+      _isLoading = true;
+      _statusText = 'Sending OneSignal test notification...';
+    });
+
+    try {
+      await OneSignalService.testOneSignalSystem();
+      setState(() {
+        _statusText = 'OneSignal test notification sent! Check your notification panel.';
+      });
+    } catch (e) {
+      setState(() {
+        _statusText = 'Error sending OneSignal test notification: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _testOneSignalIndustryNotification() async {
+    setState(() {
+      _isLoading = true;
+      _statusText = 'Sending OneSignal industry test notification...';
+    });
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // This will test industry notification if the current user is a consultant
+        await OneSignalService.testOneSignalSystem();
+        setState(() {
+          _statusText = 'OneSignal industry test notification sent!';
+        });
+      } else {
+        setState(() {
+          _statusText = 'No user logged in. Please log in as a consultant to test industry notifications.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _statusText = 'Error sending OneSignal industry test notification: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Existing Notification Test Methods
   Future<void> _checkNotificationStatus() async {
     setState(() {
       _isLoading = true;
@@ -163,12 +413,13 @@ class _NotificationTestPageState extends State<NotificationTestPage> {
 
     try {
       await NotificationHelper.checkNotificationStatus();
+      await AppNotificationService.checkNotificationSystemStatus();
       setState(() {
-        _statusText = 'Status check completed. Check console for details.';
+        _statusText = 'Notification status check completed. Check console for details.';
       });
     } catch (e) {
       setState(() {
-        _statusText = 'Error checking status: $e';
+        _statusText = 'Error checking notification status: $e';
       });
     } finally {
       setState(() {
@@ -186,9 +437,7 @@ class _NotificationTestPageState extends State<NotificationTestPage> {
     try {
       bool granted = await NotificationHelper.requestPermissions();
       setState(() {
-        _statusText = granted
-            ? 'Permissions granted successfully!'
-            : 'Permissions denied. Please enable in device settings.';
+        _statusText = 'Permissions granted: $granted';
       });
     } catch (e) {
       setState(() {
@@ -210,9 +459,7 @@ class _NotificationTestPageState extends State<NotificationTestPage> {
     try {
       String? token = await NotificationHelper.getAndStoreFcmToken();
       setState(() {
-        _statusText = token != null
-            ? 'FCM token obtained and stored successfully!'
-            : 'Failed to get FCM token. Check console for details.';
+        _statusText = 'FCM token: ${token ?? 'Not available'}';
       });
     } catch (e) {
       setState(() {
@@ -246,5 +493,26 @@ class _NotificationTestPageState extends State<NotificationTestPage> {
       });
     }
   }
+
+  Future<void> _testNotificationSystem() async {
+    setState(() {
+      _isLoading = true;
+      _statusText = 'Testing complete notification system...';
+    });
+
+    try {
+      await AppNotificationService.testNotificationSystem();
+      setState(() {
+        _statusText = 'Complete notification system test completed! Check console for details.';
+      });
+    } catch (e) {
+      setState(() {
+        _statusText = 'Error testing notification system: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 }
-*/

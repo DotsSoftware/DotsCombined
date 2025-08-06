@@ -8,6 +8,7 @@ import 'package:quiver/async.dart';
 import 'package:intl/intl.dart';
 import '../utils/notification_handler_page.dart';
 import '../utils/notification_service.dart';
+import '../utils/onesignal_service.dart';
 import '../utils/theme.dart';
 import 'direct_chat.dart';
 import 'webview.dart';
@@ -223,7 +224,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
         appointmentData = appointmentSnapshot.docs.first.data() as Map<String, dynamic>;
       }
 
-      // Use the improved notification service
+      // Use the improved notification service (existing implementation)
       await AppNotificationService.sendClientRequestNotification(
         requestId: requestId,
         industryType: widget.industryType,
@@ -234,9 +235,20 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
         jobDescription: appointmentData['jobDescription'] ?? '',
       );
 
-      print('Awesome Notification sent to consultant: $consultantId');
+      // Also send via OneSignal for better reliability
+      await OneSignalService.sendClientRequestNotification(
+        requestId: requestId,
+        industryType: widget.industryType,
+        clientId: FirebaseAuth.instance.currentUser?.uid ?? '',
+        jobDate: appointmentData['jobDate'] ?? '',
+        jobTime: appointmentData['jobTime'] ?? '',
+        siteLocation: appointmentData['siteLocation'] ?? '',
+        jobDescription: appointmentData['jobDescription'] ?? '',
+      );
+
+      print('Notifications sent to consultant: $consultantId (both Awesome and OneSignal)');
     } catch (e) {
-      print('Error sending Awesome Notification to consultant $consultantId: $e');
+      print('Error sending notifications to consultant $consultantId: $e');
     }
   }
 
