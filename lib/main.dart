@@ -18,13 +18,22 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await AppNotificationService.initialize();
 
+  print('Background message received: ${message.notification?.title}');
+  print('Background message data: ${message.data}');
+
   // Convert Map<String, dynamic> to Map<String, String>
   final payload = AppNotificationService.convertPayload(message.data);
+
+  // Handle background notification for consultants
+  if (message.data['type'] == 'client_request') {
+    await ConsultantNotificationListener.handleBackgroundNotification(message.data);
+  }
 
   await AppNotificationService.showNotification(
     title: message.notification?.title ?? 'New Request',
     body: message.notification?.body ?? 'You have a new request',
     payload: payload,
+    channelKey: 'client_requests_channel',
   );
 
   if (message.data['requestId'] != null) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'request_details.dart';
 import '../utils/theme.dart'; // Assuming theme.dart contains appGradient
 
@@ -13,6 +14,8 @@ class NotificationsListPage extends StatefulWidget {
 class _NotificationsListPageState extends State<NotificationsListPage> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  String? _consultantIndustryType;
+  String? _currentUserId;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -22,6 +25,7 @@ class _NotificationsListPageState extends State<NotificationsListPage> with Tick
   void initState() {
     super.initState();
     _initAnimations();
+    _getConsultantData();
   }
 
   void _initAnimations() {
@@ -55,6 +59,31 @@ class _NotificationsListPageState extends State<NotificationsListPage> with Tick
     );
 
     _animationController.forward();
+  }
+
+  Future<void> _getConsultantData() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        _currentUserId = user.uid;
+        
+        // Get consultant's industry type from Firestore
+        DocumentSnapshot consultantDoc = await FirebaseFirestore.instance
+            .collection('consultant_register')
+            .doc(user.uid)
+            .get();
+
+        if (consultantDoc.exists) {
+          final data = consultantDoc.data() as Map<String, dynamic>;
+          setState(() {
+            _consultantIndustryType = data['industry_type'] as String?;
+          });
+          print('Consultant industry type: $_consultantIndustryType');
+        }
+      }
+    } catch (e) {
+      print('Error getting consultant data: $e');
+    }
   }
 
   @override
@@ -122,16 +151,15 @@ class _NotificationsListPageState extends State<NotificationsListPage> with Tick
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
-                    letterSpacing: 0.5,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           child,
         ],
       ),
@@ -139,31 +167,58 @@ class _NotificationsListPageState extends State<NotificationsListPage> with Tick
   }
 
   Widget _buildStatusIndicator(String? status) {
-    Color indicatorColor;
-    String statusText;
+    Color color;
+    IconData icon;
+    String text;
+
     switch (status) {
-      case 'pending':
-        indicatorColor = Colors.orange;
-        statusText = 'Pending';
+      case 'searching':
+        color = Colors.orange;
+        icon = Icons.search;
+        text = 'Searching';
+        break;
+      case 'accepted':
+        color = Colors.green;
+        icon = Icons.check_circle;
+        text = 'Accepted';
+        break;
+      case 'rejected':
+        color = Colors.red;
+        icon = Icons.cancel;
+        text = 'Rejected';
+        break;
+      case 'completed':
+        color = Colors.blue;
+        icon = Icons.done_all;
+        text = 'Completed';
         break;
       default:
-        indicatorColor = const Color(0xFF1E3A8A);
-        statusText = 'New';
+        color = Colors.grey;
+        icon = Icons.help_outline;
+        text = 'Unknown';
     }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: indicatorColor.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: indicatorColor.withOpacity(0.5)),
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color, width: 1),
       ),
-      child: Text(
-        statusText,
-        style: TextStyle(
-          color: indicatorColor,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -177,12 +232,12 @@ class _NotificationsListPageState extends State<NotificationsListPage> with Tick
           child: Column(
             children: [
               // Header
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: ScaleTransition(
-                  scale: _scaleAnimation,
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
+              SlideTransition(
+                position: _slideAnimation,
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
                     child: Row(
                       children: [
                         Container(
@@ -210,15 +265,28 @@ class _NotificationsListPageState extends State<NotificationsListPage> with Tick
                           ),
                         ),
                         const SizedBox(width: 16),
-                        const Expanded(
-                          child: Text(
-                            'Notifications',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
-                            ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Notifications',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              if (_consultantIndustryType != null)
+                                Text(
+                                  'Industry: $_consultantIndustryType',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white.withOpacity(0.8),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ],
@@ -274,203 +342,210 @@ class _NotificationsListPageState extends State<NotificationsListPage> with Tick
 
               // Notifications List
               Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('notifications')
-                      .orderBy('timestamp', descending: true)
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: SlideTransition(
-                          position: _slideAnimation,
-                          child: FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 24),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.red.withOpacity(0.3)),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.error_outline,
-                                    color: Colors.red,
-                                    size: 24,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      'Error: ${snapshot.error}',
-                                      style: const TextStyle(
-                                        color: Colors.red,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
+                child: _consultantIndustryType == null
+                    ? const Center(
                         child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1E3A8A)),
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
-                      );
-                    }
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return Center(
-                        child: SlideTransition(
-                          position: _slideAnimation,
-                          child: FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.notifications_none,
-                                  size: 64,
-                                  color: Colors.white.withOpacity(0.7),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No notifications available',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.7),
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-
-                    final filteredDocs = snapshot.data!.docs
-                        .where((doc) => _matchesSearch(doc.data() as Map<String, dynamic>))
-                        .toList();
-
-                    if (filteredDocs.isEmpty) {
-                      return Center(
-                        child: SlideTransition(
-                          position: _slideAnimation,
-                          child: FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.search_off,
-                                  size: 64,
-                                  color: Colors.white.withOpacity(0.7),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No matching notifications found',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.7),
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: filteredDocs.length,
-                      itemBuilder: (context, index) {
-                        var notification = filteredDocs[index];
-                        var data = notification.data() as Map<String, dynamic>;
-                        String displayDate =
-                            '${data['jobDate'] ?? 'No date'} at ${data['jobTime'] ?? 'No time'}';
-
-                        return SlideTransition(
-                          position: _slideAnimation,
-                          child: FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: _buildModernCard(
-                              title: data['industry_type'] ?? 'Unknown Industry',
-                              icon: Icons.notifications,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    displayDate,
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.7),
-                                      fontSize: 14,
+                      )
+                    : StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('notifications')
+                            .where('industry_type', isEqualTo: _consultantIndustryType)
+                            .orderBy('timestamp', descending: true)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasError) {
+                            return Center(
+                              child: SlideTransition(
+                                position: _slideAnimation,
+                                child: FadeTransition(
+                                  opacity: _fadeAnimation,
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: Colors.red.withOpacity(0.3)),
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    data['siteLocation'] ?? 'No location specified',
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.7),
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      _buildStatusIndicator(data['status']),
-                                      Material(
-                                        color: Colors.transparent,
-                                        child: InkWell(
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) => RequestDetailsPage(
-                                                  documentId: notification.id,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                          borderRadius: BorderRadius.circular(12),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 12, horizontal: 16),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(12),
-                                              border: Border.all(
-                                                  color: Colors.white.withOpacity(0.3)),
-                                            ),
-                                            child: const Text(
-                                              'View Details',
-                                              style: TextStyle(
-                                                color: Color(0xFF1E3A8A),
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
-                                              ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.error_outline,
+                                          color: Colors.red,
+                                          size: 24,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            'Error: ${snapshot.error}',
+                                            style: const TextStyle(
+                                              color: Colors.red,
+                                              fontSize: 14,
                                             ),
                                           ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1E3A8A)),
+                              ),
+                            );
+                          }
+                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                            return Center(
+                              child: SlideTransition(
+                                position: _slideAnimation,
+                                child: FadeTransition(
+                                  opacity: _fadeAnimation,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.notifications_none,
+                                        size: 64,
+                                        color: Colors.white.withOpacity(0.7),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'No notifications available',
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.7),
+                                          fontSize: 16,
                                         ),
                                       ),
                                     ],
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
+                            );
+                          }
+
+                          final filteredDocs = snapshot.data!.docs
+                              .where((doc) => _matchesSearch(doc.data() as Map<String, dynamic>))
+                              .toList();
+
+                          if (filteredDocs.isEmpty) {
+                            return Center(
+                              child: SlideTransition(
+                                position: _slideAnimation,
+                                child: FadeTransition(
+                                  opacity: _fadeAnimation,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.search_off,
+                                        size: 64,
+                                        color: Colors.white.withOpacity(0.7),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'No matching notifications found',
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.7),
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+
+                          return ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: filteredDocs.length,
+                            itemBuilder: (context, index) {
+                              var notification = filteredDocs[index];
+                              var data = notification.data() as Map<String, dynamic>;
+                              String displayDate =
+                                  '${data['jobDate'] ?? 'No date'} at ${data['jobTime'] ?? 'No time'}';
+
+                              return SlideTransition(
+                                position: _slideAnimation,
+                                child: FadeTransition(
+                                  opacity: _fadeAnimation,
+                                  child: _buildModernCard(
+                                    title: data['industry_type'] ?? 'Unknown Industry',
+                                    icon: Icons.notifications,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          displayDate,
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(0.7),
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          data['siteLocation'] ?? 'No location specified',
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(0.7),
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            _buildStatusIndicator(data['status']),
+                                            Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                onTap: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) => RequestDetailsPage(
+                                                        documentId: notification.id,
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                                borderRadius: BorderRadius.circular(12),
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                      vertical: 12, horizontal: 16),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white.withOpacity(0.1),
+                                                    borderRadius: BorderRadius.circular(12),
+                                                    border: Border.all(
+                                                        color: Colors.white.withOpacity(0.3)),
+                                                  ),
+                                                  child: const Text(
+                                                    'View Details',
+                                                    style: TextStyle(
+                                                      color: Color(0xFF1E3A8A),
+                                                      fontWeight: FontWeight.w600,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
               ),
             ],
           ),
