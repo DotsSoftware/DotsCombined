@@ -463,6 +463,7 @@ class _ChatInboxPageState extends State<ChatInboxPage>
                   stream: FirebaseFirestore.instance
                       .collection('inbox')
                       .where('participants', arrayContains: currentUserId)
+                      .orderBy('lastMessageTime', descending: true)
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {

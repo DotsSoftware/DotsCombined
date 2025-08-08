@@ -143,7 +143,7 @@ class _DirectPageState extends State<DirectPage> {
     if (appointmentId == null) return;
 
     FirebaseFirestore.instance
-        .collection('client request')
+        .collection('notifications')
         .doc(appointmentId)
         .snapshots()
         .listen((snapshot) {
@@ -521,6 +521,18 @@ ${coordinates != null ? 'Tap the map above to navigate' : 'Click here to navigat
           .collection('messages')
           .doc(message.id)
           .set(message.toJson());
+
+      // Update inbox metadata for ordering and previews
+      final String previewText = message is types.TextMessage
+          ? message.text
+          : (message is types.ImageMessage
+              ? '[Image] ${message.name}'
+              : (message is types.FileMessage ? '[File] ${message.name}' : ''));
+
+      await FirebaseFirestore.instance.collection('inbox').doc(widget.chatId).set({
+        'lastMessage': previewText,
+        'lastMessageTime': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     }
   }
 

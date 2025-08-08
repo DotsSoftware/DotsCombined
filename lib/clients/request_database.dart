@@ -86,6 +86,19 @@ class _RequestDatabaseState extends State<RequestDatabase>
     }
   }
 
+  Stream<QuerySnapshot> _clientRequestsStream() {
+    final baseQuery = FirebaseFirestore.instance
+        .collection('notifications')
+        .where('clientId', isEqualTo: FirebaseAuth.instance.currentUser?.uid);
+    if (filter != 'All') {
+      return baseQuery
+          .where('status', isEqualTo: filter)
+          .orderBy('timestamp', descending: true)
+          .snapshots();
+    }
+    return baseQuery.orderBy('timestamp', descending: true).snapshots();
+  }
+
   Future<void> _pickAndUpdateDocument(
     String fieldName,
     String requestId,
@@ -519,7 +532,7 @@ class _RequestDatabaseState extends State<RequestDatabase>
         };
 
         await FirebaseFirestore.instance
-            .collection('client request')
+            .collection('notifications')
             .doc(request.id)
             .set(updateData, SetOptions(merge: true));
 
@@ -1163,18 +1176,7 @@ class _RequestDatabaseState extends State<RequestDatabase>
                   // Request List
                   Expanded(
                     child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('notifications')
-                          .where(
-                            'clientId',
-                            isEqualTo: FirebaseAuth.instance.currentUser?.uid,
-                          )
-                          .where(
-                            'status',
-                            isEqualTo: filter != 'All' ? filter : null,
-                          )
-                          .orderBy('timestamp', descending: true)
-                          .snapshots(),
+                      stream: _clientRequestsStream(),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
