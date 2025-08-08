@@ -382,6 +382,8 @@ class _InboxPageState extends State<InboxPage> with TickerProviderStateMixin {
                                   'participants',
                                   arrayContains: currentUserId,
                                 )
+                                .orderBy('lastMessageTime', descending: true)
+                                .limit(100)
                                 .snapshots(),
                       builder: (context, snapshot) {
                         if (currentUserId.isEmpty) {

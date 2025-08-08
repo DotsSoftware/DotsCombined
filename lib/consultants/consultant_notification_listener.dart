@@ -38,6 +38,8 @@ class ConsultantNotificationListener {
             .collection('notifications')
             .where('industry_type', isEqualTo: industryType)
             .where('status', isEqualTo: 'searching')
+            .orderBy('timestamp', descending: true)
+            .limit(50)
             .snapshots()
             .listen((snapshot) async {
           print('Received ${snapshot.docChanges.length} notification changes');
@@ -124,7 +126,7 @@ class ConsultantNotificationListener {
             .update({
           'status': 'accepted',
           'acceptedConsultantId': consultantId,
-          'acceptedAt': FieldValue.serverTimestamp(),
+          'acceptedTimestamp': FieldValue.serverTimestamp(),
         });
         print('Request accepted successfully');
       } else if (action.buttonKeyPressed == 'REJECT') {

@@ -190,26 +190,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
 
   Future<void> sendAwesomeNotification(String consultantId, String requestId) async {
     try {
-      // Get consultant's FCM token
-      DocumentSnapshot consultantDoc = await FirebaseFirestore.instance
-          .collection('consultant_register')
-          .doc(consultantId)
-          .get();
-
-      if (!consultantDoc.exists) {
-        print('Consultant document not found: $consultantId');
-        return;
-      }
-
-      final consultantData = consultantDoc.data() as Map<String, dynamic>;
-      final fcmToken = consultantData['fcmToken'] as String?;
-
-      if (fcmToken == null || fcmToken.isEmpty) {
-        print('No FCM token found for consultant: $consultantId');
-        return;
-      }
-
-      // Get appointment details for notification
+      // Only use OneSignal for external delivery
       final userId = FirebaseAuth.instance.currentUser?.uid;
       QuerySnapshot appointmentSnapshot = await FirebaseFirestore.instance
           .collection('selection')
@@ -224,18 +205,6 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
         appointmentData = appointmentSnapshot.docs.first.data() as Map<String, dynamic>;
       }
 
-      // Use the improved notification service (existing implementation)
-      await AppNotificationService.sendClientRequestNotification(
-        requestId: requestId,
-        industryType: widget.industryType,
-        clientId: FirebaseAuth.instance.currentUser?.uid ?? '',
-        jobDate: appointmentData['jobDate'] ?? '',
-        jobTime: appointmentData['jobTime'] ?? '',
-        siteLocation: appointmentData['siteLocation'] ?? '',
-        jobDescription: appointmentData['jobDescription'] ?? '',
-      );
-
-      // Also send via OneSignal for better reliability
       await OneSignalService.sendClientRequestNotification(
         requestId: requestId,
         industryType: widget.industryType,
@@ -246,9 +215,9 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
         jobDescription: appointmentData['jobDescription'] ?? '',
       );
 
-      print('Notifications sent to consultant: $consultantId (both Awesome and OneSignal)');
+      print('OneSignal notification sent to consultant: $consultantId');
     } catch (e) {
-      print('Error sending notifications to consultant $consultantId: $e');
+      print('Error sending OneSignal notification to consultant $consultantId: $e');
     }
   }
 

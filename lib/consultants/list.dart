@@ -352,7 +352,9 @@ class _NotificationsListPageState extends State<NotificationsListPage> with Tick
                         stream: FirebaseFirestore.instance
                             .collection('notifications')
                             .where('industry_type', isEqualTo: _consultantIndustryType)
+                            .where('status', whereIn: ['searching', 'accepted'])
                             .orderBy('timestamp', descending: true)
+                            .limit(50)
                             .snapshots(),
                         builder: (context, snapshot) {
                           if (snapshot.hasError) {

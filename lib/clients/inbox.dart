@@ -240,7 +240,7 @@ class _ChatInboxPageState extends State<ChatInboxPage>
             final subtitle = appointmentSnapshot.data ?? 'Loading...';
             final userName = userSnapshot.data ?? 'Loading...';
             final timestamp = _formatTimestamp(
-              data['lastMessageTime'] as Timestamp?,
+              data['lastMessageTime'] is Timestamp ? data['lastMessageTime'] as Timestamp : null,
             );
 
             return SlideTransition(
@@ -463,6 +463,8 @@ class _ChatInboxPageState extends State<ChatInboxPage>
                   stream: FirebaseFirestore.instance
                       .collection('inbox')
                       .where('participants', arrayContains: currentUserId)
+                      .orderBy('lastMessageTime', descending: true)
+                      .limit(100)
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -563,21 +565,11 @@ class _ChatInboxPageState extends State<ChatInboxPage>
                       );
                     }
 
-                    // Sort messages by timestamp manually
-                    var sortedDocs = snapshot.data!.docs;
-                    sortedDocs.sort((a, b) {
-                      Timestamp? aTime = a['lastMessageTime'] as Timestamp?;
-                      Timestamp? bTime = b['lastMessageTime'] as Timestamp?;
-                      return (bTime ?? Timestamp.now()).compareTo(
-                        aTime ?? Timestamp.now(),
-                      );
-                    });
-
                     return ListView.builder(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: sortedDocs.length,
+                      itemCount: snapshot.data!.docs.length,
                       itemBuilder: (context, index) =>
-                          _buildChatCard(chat: sortedDocs[index], index: index),
+                          _buildChatCard(chat: snapshot.data!.docs[index], index: index),
                     );
                   },
                 ),

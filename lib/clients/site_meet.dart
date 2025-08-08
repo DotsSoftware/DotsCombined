@@ -33,7 +33,7 @@ class _SiteMeetPageState extends State<SiteMeetPage> {
   final TextEditingController notesController = TextEditingController();
 
   CollectionReference siteMeetings =
-      FirebaseFirestore.instance.collection('client request');
+      FirebaseFirestore.instance.collection('notifications');
 
   Map<String, Map<String, String>> documentFields = {
     'Document1': {'name': '', 'url': ''},
@@ -107,6 +107,8 @@ class _SiteMeetPageState extends State<SiteMeetPage> {
         'clientEmail': user?.email,
         'consultantEmail': 'consultant@example.com',
         'timestamp': FieldValue.serverTimestamp(),
+        'status': 'searching',
+        'paymentStatus': 'pending',
       });
 
       // Store the appointment ID

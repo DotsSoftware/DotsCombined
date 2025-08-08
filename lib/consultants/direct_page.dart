@@ -60,15 +60,17 @@ class _DirectPageState extends State<DirectPage> {
     if (appointmentId == null) return;
 
     FirebaseFirestore.instance
-        .collection('client request')
+        .collection('notifications')
         .doc(appointmentId)
         .snapshots()
         .listen((snapshot) {
       if (snapshot.exists) {
-        final status = snapshot.data()?['status'] ?? 'Open';
+        final data = snapshot.data();
+        final String? paymentStatus = data?['paymentStatus'] as String?;
+        final String status = data?['status'] as String? ?? 'Open';
         if (mounted) {
           setState(() {
-            isChatClosed = status == 'Closed';
+            isChatClosed = status == 'Closed' || paymentStatus != 'Paid';
           });
         }
       }
@@ -110,6 +112,7 @@ class _DirectPageState extends State<DirectPage> {
         .doc(widget.chatId)
         .collection('messages')
         .orderBy('createdAt', descending: true)
+        .limit(100)
         .snapshots()
         .listen((querySnapshot) {
       final messages = querySnapshot.docs.map((doc) {
@@ -440,6 +443,18 @@ class _DirectPageState extends State<DirectPage> {
           .collection('messages')
           .doc(message.id)
           .set(message.toJson());
+
+      // Update inbox metadata for ordering
+      final preview = message is types.TextMessage
+          ? message.text
+          : (message is types.ImageMessage
+              ? '[Image] ${message.name}'
+              : (message is types.FileMessage ? '[File] ${message.name}' : '[Message]'));
+
+      await FirebaseFirestore.instance.collection('inbox').doc(widget.chatId).set({
+        'lastMessage': preview,
+        'lastMessageTime': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       print('Message successfully added to Firestore');
     }
