@@ -107,26 +107,27 @@ class _WebViewPageState extends State<WebViewPage>
         'timestamp': FieldValue.serverTimestamp(),
       };
 
-      await FirebaseFirestore.instance
-          .collection('notifications')
-          .where('clientId', isEqualTo: _user!.uid)
-          .orderBy('timestamp', descending: true)
-          .limit(1)
-          .get()
-          .then((querySnapshot) async {
-            if (querySnapshot.docs.isNotEmpty) {
-              final notificationDoc = querySnapshot.docs.first;
-              await FirebaseFirestore.instance
-                  .collection('notifications')
-                  .doc(notificationDoc.id)
-                  .update({
-                    'paymentStatus': status,
-                    'paymentTimestamp': FieldValue.serverTimestamp(),
-                    'paymentAmount': totalPrice,
-                    'transactionDetails': transactionData,
-                  });
-            }
-          });
+             await FirebaseFirestore.instance
+           .collection('notifications')
+           .where('clientId', isEqualTo: _user!.uid)
+           .where('status', whereIn: ['accepted','searching','pending'])
+           .orderBy('timestamp', descending: true)
+           .limit(1)
+           .get()
+           .then((querySnapshot) async {
+             if (querySnapshot.docs.isNotEmpty) {
+               final notificationDoc = querySnapshot.docs.first;
+               await FirebaseFirestore.instance
+                   .collection('notifications')
+                   .doc(notificationDoc.id)
+                   .update({
+                     'paymentStatus': status,
+                     'paymentTimestamp': FieldValue.serverTimestamp(),
+                     'paymentAmount': totalPrice,
+                     'transactionDetails': transactionData,
+                   });
+             }
+           });
 
       await FirebaseFirestore.instance
           .collection('accepted')

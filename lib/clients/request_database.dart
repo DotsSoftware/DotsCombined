@@ -519,7 +519,7 @@ class _RequestDatabaseState extends State<RequestDatabase>
         };
 
         await FirebaseFirestore.instance
-            .collection('client request')
+            .collection('notifications')
             .doc(request.id)
             .set(updateData, SetOptions(merge: true));
 
@@ -1057,6 +1057,17 @@ class _RequestDatabaseState extends State<RequestDatabase>
     );
   }
 
+  Stream<QuerySnapshot> _clientRequestsStream(String clientId, String filter) {
+    final base = FirebaseFirestore.instance
+        .collection('notifications')
+        .where('clientId', isEqualTo: clientId)
+        .orderBy('timestamp', descending: true);
+    if (filter != 'All' && filter.isNotEmpty) {
+      return base.where('status', isEqualTo: filter).snapshots();
+    }
+    return base.snapshots();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1163,18 +1174,10 @@ class _RequestDatabaseState extends State<RequestDatabase>
                   // Request List
                   Expanded(
                     child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('notifications')
-                          .where(
-                            'clientId',
-                            isEqualTo: FirebaseAuth.instance.currentUser?.uid,
-                          )
-                          .where(
-                            'status',
-                            isEqualTo: filter != 'All' ? filter : null,
-                          )
-                          .orderBy('timestamp', descending: true)
-                          .snapshots(),
+                      stream: _clientRequestsStream(
+                        FirebaseAuth.instance.currentUser?.uid ?? '',
+                        filter,
+                      ),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {

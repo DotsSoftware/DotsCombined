@@ -14,6 +14,7 @@ import 'firebase_options.dart';
 import 'user_type.dart';
 import 'utils/notification_service.dart';
 import 'utils/onesignal_service.dart';
+import 'utils/notification_config.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -60,6 +61,9 @@ Future<void> main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await AppNotificationService.initialize();
   await OneSignalService.initialize(); // Initialize OneSignal
+  if (!NotificationConfig.isOneSignalConfigured) {
+    print(NotificationConfig.validationMessage);
+  }
   await setupNotifications();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   await FirebaseApi().initNotifications();

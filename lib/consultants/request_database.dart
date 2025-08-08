@@ -292,7 +292,7 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
   Future<void> _closeRequest(QueryDocumentSnapshot request) async {
     setState(() => _isLoading = true);
     try {
-      final requestDocRef = FirebaseFirestore.instance.collection('client request').doc(request.id);
+      final requestDocRef = FirebaseFirestore.instance.collection('notifications').doc(request.id);
       final requestDoc = await requestDocRef.get();
 
       if (!requestDoc.exists) {

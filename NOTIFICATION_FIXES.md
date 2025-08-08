@@ -150,3 +150,10 @@ Notification sent successfully: [title]
 3. Test on different devices and Android versions
 4. Verify client request notifications work end-to-end
 5. Consider adding more notification channels if needed
+
+## Firestore composite indexes to add
+
+- notifications: `clientId` + `timestamp` (order desc)
+- notifications: `clientId` + `status` + `timestamp` (order desc)
+- notifications: `acceptedConsultantId` + `status` + `timestamp` (order desc)
+- inbox: `participants` (arrayContains) + `lastMessageTime` (order desc)

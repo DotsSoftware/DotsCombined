@@ -39,11 +39,13 @@ class NotificationConfig {
   static const int retryDelaySeconds = 5;
   
   // Validation
-  static bool get isOneSignalConfigured => oneSignalAppId != 'bc8843e0-92a5-4ce8-923f-f83470c5bba0';
+  static bool get isOneSignalConfigured =>
+      (oneSignalAppId.isNotEmpty && oneSignalAppId.trim().length > 10) &&
+      (oneSignalApiKey.isNotEmpty && oneSignalApiKey.trim().length > 10);
   
   static String get validationMessage {
     if (!isOneSignalConfigured) {
-      return '⚠️ OneSignal App ID not configured. Please update NotificationConfig.oneSignalAppId';
+      return '⚠️ OneSignal is not fully configured. Please set a valid oneSignalAppId and oneSignalApiKey in NotificationConfig.';
     }
     return '✅ Notification configuration is valid';
   }
