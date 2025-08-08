@@ -39,7 +39,7 @@ class NotificationConfig {
   static const int retryDelaySeconds = 5;
   
   // Validation
-  static bool get isOneSignalConfigured => oneSignalAppId != 'bc8843e0-92a5-4ce8-923f-f83470c5bba0';
+  static bool get isOneSignalConfigured => oneSignalAppId.isNotEmpty && oneSignalApiKey.isNotEmpty;
   
   static String get validationMessage {
     if (!isOneSignalConfigured) {
