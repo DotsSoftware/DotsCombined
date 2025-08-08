@@ -3,7 +3,8 @@
 
 class NotificationConfig {
   // OneSignal Configuration
-  static const String oneSignalAppId = 'YOUR_ONESIGNAL_APP_ID'; // Replace with your actual OneSignal App ID
+  static const String oneSignalAppId = 'bc8843e0-92a5-4ce8-923f-f83470c5bba0'; // Replace with your actual OneSignal App ID
+  static const String oneSignalApiKey = 'os_v2_app_xseehyesuvgorer77a2hbrn3uahuvytcxvlu5oe6wvlnmybfzm5dvfvhqm7frg4dnvytdw523zzrgux4qfjv7vcjxtrm5nyccyezpyi'; // Replace with your OneSignal REST API Key
   
   // Firebase Configuration (if needed for reference)
   static const String firebaseProjectId = 'dots-b3559'; // Your Firebase project ID
@@ -38,7 +39,7 @@ class NotificationConfig {
   static const int retryDelaySeconds = 5;
   
   // Validation
-  static bool get isOneSignalConfigured => oneSignalAppId != 'YOUR_ONESIGNAL_APP_ID';
+  static bool get isOneSignalConfigured => oneSignalAppId != 'bc8843e0-92a5-4ce8-923f-f83470c5bba0';
   
   static String get validationMessage {
     if (!isOneSignalConfigured) {

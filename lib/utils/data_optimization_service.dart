@@ -2,7 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class DataOptimizationService {
-  static final DataOptimizationService _instance = DataOptimizationService._internal();
+  static final DataOptimizationService _instance =
+      DataOptimizationService._internal();
   factory DataOptimizationService() => _instance;
   DataOptimizationService._internal();
 
@@ -75,25 +76,25 @@ class DataOptimizationService {
           .collection('notifications')
           .doc(requestId)
           .set({
-        'clientId': clientId,
-        'industry_type': industryType,
-        'timestamp': FieldValue.serverTimestamp(),
-        'status': 'searching',
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        ...additionalData,
-      });
+            'clientId': clientId,
+            'industry_type': industryType,
+            'timestamp': FieldValue.serverTimestamp(),
+            'status': 'searching',
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+            ...additionalData,
+          });
 
       // Create index for efficient querying
       await FirebaseFirestore.instance
           .collection('notification_indexes')
           .doc(requestId)
           .set({
-        'clientId': clientId,
-        'industry_type': industryType,
-        'status': 'searching',
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+            'clientId': clientId,
+            'industry_type': industryType,
+            'status': 'searching',
+            'timestamp': FieldValue.serverTimestamp(),
+          });
 
       print('Notification saved with indexing: $requestId');
     } catch (e) {
@@ -133,9 +134,9 @@ class DataOptimizationService {
           .collection('notification_indexes')
           .doc(requestId)
           .update({
-        'status': status,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+            'status': status,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
 
       print('Notification status updated: $requestId -> $status');
     } catch (e) {
@@ -145,7 +146,9 @@ class DataOptimizationService {
   }
 
   // Optimized method to get consultants by industry
-  static Future<QuerySnapshot> getConsultantsByIndustry(String industryType) async {
+  static Future<QuerySnapshot> getConsultantsByIndustry(
+    String industryType,
+  ) async {
     return await FirebaseFirestore.instance
         .collection('consultant_register')
         .where('industry_type', isEqualTo: industryType)
@@ -168,13 +171,13 @@ class DataOptimizationService {
           .collection('transactions')
           .doc(transactionId)
           .set({
-        'id': transactionId,
-        'userId': userId,
-        'timestamp': FieldValue.serverTimestamp(),
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        ...transactionData,
-      });
+            'id': transactionId,
+            'userId': userId,
+            'timestamp': FieldValue.serverTimestamp(),
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+            ...transactionData,
+          });
 
       // Create user transaction reference
       await FirebaseFirestore.instance
@@ -183,9 +186,9 @@ class DataOptimizationService {
           .collection('transactions')
           .doc(transactionId)
           .set({
-        'transactionId': transactionId,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+            'transactionId': transactionId,
+            'timestamp': FieldValue.serverTimestamp(),
+          });
 
       print('Transaction saved: $transactionId');
     } catch (e) {
@@ -209,7 +212,7 @@ class DataOptimizationService {
   static Future<void> cleanupOldNotifications() async {
     try {
       final cutoffDate = DateTime.now().subtract(const Duration(days: 30));
-      
+
       QuerySnapshot oldNotifications = await FirebaseFirestore.instance
           .collection('notifications')
           .where('timestamp', isLessThan: Timestamp.fromDate(cutoffDate))
@@ -234,19 +237,19 @@ class DataOptimizationService {
           .collection('indexes')
           .doc('notifications_industry_status')
           .set({
-        'collection': 'notifications',
-        'fields': ['industry_type', 'status', 'timestamp'],
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+            'collection': 'notifications',
+            'fields': ['industry_type', 'status', 'timestamp'],
+            'createdAt': FieldValue.serverTimestamp(),
+          });
 
       await FirebaseFirestore.instance
           .collection('indexes')
           .doc('consultants_industry_status')
           .set({
-        'collection': 'consultant_register',
-        'fields': ['industry_type', 'applicationStatus'],
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+            'collection': 'consultant_register',
+            'fields': ['industry_type', 'applicationStatus'],
+            'createdAt': FieldValue.serverTimestamp(),
+          });
 
       print('Indexes created successfully');
     } catch (e) {
@@ -257,37 +260,14 @@ class DataOptimizationService {
   // Method to validate data structure
   static bool validateNotificationData(Map<String, dynamic> data) {
     final requiredFields = ['clientId', 'industry_type', 'status'];
-    
+
     for (String field in requiredFields) {
       if (!data.containsKey(field) || data[field] == null) {
         print('Missing required field: $field');
         return false;
       }
     }
-    
-    return true;
-  }
 
-  // Method to get optimized price data
-  static Map<String, String> getOptimizedPriceData() {
-    return {
-      'competency_prices': {
-        'Level 1 - Basic Knowledge': '500.00',
-        'Level 2 - Skilled In Industry': '937.50',
-        'Level 3 - High Level Of Expertise': '2187.50',
-      },
-      'public_transport_prices': {
-        'Local - Within a 50km Radius': '187.50',
-        'Regional - Within a 300km Radius': '475.00',
-        'National - Within a 1500km Radius': '6250.50',
-      },
-      'own_vehicle_prices': {
-        'Local - Within a 50km Radius': '437.50',
-        'Regional - Within a 300km Radius': '1450.00',
-        'Provincial - Within a 500km Radius': '1950.00',
-        'Interprovincial - Within a 1000km Radius': '3106.25',
-        'National - Within a 1500km Radius': '10937.50',
-      },
-    };
+    return true;
   }
 }

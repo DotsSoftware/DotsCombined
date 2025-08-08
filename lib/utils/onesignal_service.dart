@@ -2,6 +2,8 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'notification_service.dart';
 import 'notification_handler_page.dart';
 import 'notification_config.dart';
@@ -14,25 +16,20 @@ class OneSignalService {
   // OneSignal App ID from configuration
   static String get _oneSignalAppId => NotificationConfig.oneSignalAppId;
 
+  // OneSignal REST API Key (add this to NotificationConfig)
+  static String get _oneSignalApiKey => NotificationConfig.oneSignalApiKey;
+
   static Future<void> initialize() async {
     try {
-      // Validate OneSignal configuration
       if (!NotificationConfig.isOneSignalConfigured) {
         print('⚠️ OneSignal App ID not configured. Please update NotificationConfig.oneSignalAppId');
         return;
       }
 
-      // Set OneSignal App ID
       OneSignal.initialize(_oneSignalAppId);
-
-      // Request notification permissions
-      OneSignal.Notifications.requestPermission(true);
-
-      // Set up notification handlers
+      await OneSignal.Notifications.requestPermission(true);
       OneSignal.Notifications.addClickListener(_onNotificationClicked);
       OneSignal.Notifications.addForegroundWillDisplayListener(_onForegroundNotificationReceived);
-
-      // Set up user ID when user logs in
       _setupUserSubscription();
 
       print('✅ OneSignal initialized successfully');
@@ -44,15 +41,10 @@ class OneSignalService {
   static void _setupUserSubscription() {
     FirebaseAuth.instance.authStateChanges().listen((User? user) async {
       if (user != null) {
-        // Set external user ID for OneSignal
         await OneSignal.login(user.uid);
-        
-        // Store OneSignal player ID in Firestore
         await _storeOneSignalPlayerId(user.uid);
-        
         print('✅ OneSignal user ID set: ${user.uid}');
       } else {
-        // Logout from OneSignal when user logs out
         await OneSignal.logout();
         print('✅ OneSignal user logged out');
       }
@@ -64,14 +56,20 @@ class OneSignalService {
       String? playerId = await OneSignal.User.pushSubscription.id;
       if (playerId != null) {
         await Future.wait([
-          FirebaseFirestore.instance.collection('register').doc(userId).set({
-            'oneSignalPlayerId': playerId,
-            'lastOneSignalUpdate': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true)),
-          FirebaseFirestore.instance.collection('consultant_register').doc(userId).set({
-            'oneSignalPlayerId': playerId,
-            'lastOneSignalUpdate': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true)),
+          FirebaseFirestore.instance.collection('register').doc(userId).set(
+            {
+              'oneSignalPlayerId': playerId,
+              'lastOneSignalUpdate': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          ),
+          FirebaseFirestore.instance.collection('consultant_register').doc(userId).set(
+            {
+              'oneSignalPlayerId': playerId,
+              'lastOneSignalUpdate': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          ),
         ]);
         print('✅ OneSignal Player ID stored for user: $userId');
       }
@@ -80,19 +78,14 @@ class OneSignalService {
     }
   }
 
-  // Handle notification clicks
-  static void _onNotificationClicked(NotificationClickEvent event) {
+  static void _onNotificationClicked(OSNotificationClickEvent event) {
     print('🔔 OneSignal notification clicked: ${event.notification.title}');
-    
     try {
       final payload = event.notification.additionalData;
       if (payload != null) {
-        // Convert payload to the format expected by NotificationHandlerPage
         final notificationPayload = payload.map(
           (key, value) => MapEntry(key, value?.toString() ?? ''),
         );
-        
-        // Navigate to notification handler page
         WidgetsBinding.instance.addPostFrameCallback((_) {
           navigatorKey.currentState?.push(
             MaterialPageRoute(
@@ -106,16 +99,12 @@ class OneSignalService {
     }
   }
 
-  // Handle foreground notifications
-  static void _onForegroundNotificationReceived(NotificationWillDisplayEvent event) {
+  static void _onForegroundNotificationReceived(OSNotificationWillDisplayEvent event) {
     print('🔔 OneSignal foreground notification received: ${event.notification.title}');
-    
-    // You can customize the notification display here
-    // For now, we'll let it display normally
     event.notification.display();
   }
 
-  // Send notification to specific users via OneSignal
+  // Send notification to specific users via OneSignal REST API
   static Future<void> sendNotificationToUsers({
     required List<String> playerIds,
     required String title,
@@ -124,23 +113,36 @@ class OneSignalService {
     String? imageUrl,
   }) async {
     try {
-      var notification = OSCreateNotification(
-        playerIds: playerIds,
-        heading: title,
-        content: body,
-        data: data,
-        bigPicture: imageUrl,
-        androidChannelId: 'high_importance_channel',
-        androidSound: 'default',
-        iosSound: 'default',
+      if (playerIds.isEmpty) {
+        print('⚠️ No player IDs provided for notification');
+        return;
+      }
+
+      final notification = {
+        'app_id': _oneSignalAppId,
+        'include_player_ids': playerIds,
+        'headings': {'en': title},
+        'contents': {'en': body},
+        'data': data,
+        if (imageUrl != null) 'big_picture': imageUrl,
+        'android_channel_id': 'high_importance_channel',
+        'android_sound': 'default',
+        'ios_sound': 'default',
+      };
+
+      final response = await http.post(
+        Uri.parse('https://api.onesignal.com/notifications'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic $_oneSignalApiKey',
+        },
+        body: jsonEncode(notification),
       );
 
-      var response = await OneSignal.Notifications.add(notification);
-      
-      if (response) {
+      if (response.statusCode == 200) {
         print('✅ OneSignal notification sent successfully to ${playerIds.length} users');
       } else {
-        print('❌ Failed to send OneSignal notification');
+        print('❌ Failed to send OneSignal notification: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('❌ Error sending OneSignal notification: $e');
@@ -156,7 +158,6 @@ class OneSignalService {
     String? imageUrl,
   }) async {
     try {
-      // Get all consultants in the specified industry
       QuerySnapshot consultantSnapshot = await FirebaseFirestore.instance
           .collection('consultant_register')
           .where('industry_type', isEqualTo: industryType)
@@ -165,7 +166,8 @@ class OneSignalService {
 
       List<String> playerIds = [];
       for (var consultant in consultantSnapshot.docs) {
-        String? playerId = consultant.data()['oneSignalPlayerId'] as String?;
+        final data = consultant.data() as Map<String, dynamic>?;
+        String? playerId = data?['oneSignalPlayerId'] as String?;
         if (playerId != null && playerId.isNotEmpty) {
           playerIds.add(playerId);
         }
@@ -238,13 +240,14 @@ class OneSignalService {
           .get();
 
       if (consultantDoc.exists) {
-        String? playerId = consultantDoc.data()?['oneSignalPlayerId'] as String?;
+        final data = consultantDoc.data() as Map<String, dynamic>?;
+        String? playerId = data?['oneSignalPlayerId'] as String?;
         if (playerId != null && playerId.isNotEmpty) {
           await sendNotificationToUsers(
             playerIds: [playerId],
             title: title,
             body: body,
-            data: data,
+            data: data ?? {},
             imageUrl: imageUrl,
           );
         } else {
@@ -263,7 +266,6 @@ class OneSignalService {
     try {
       print('🧪 Testing OneSignal notification system...');
 
-      // Test notification to current user
       String? currentPlayerId = await OneSignal.User.pushSubscription.id;
       if (currentPlayerId != null) {
         await sendNotificationToUsers(
@@ -277,7 +279,6 @@ class OneSignalService {
         print('⚠️ No OneSignal Player ID available for current user');
       }
 
-      // Test industry notification (if user is a consultant)
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         DocumentSnapshot consultantDoc = await FirebaseFirestore.instance
@@ -286,7 +287,8 @@ class OneSignalService {
             .get();
 
         if (consultantDoc.exists) {
-          String industryType = consultantDoc.data()?['industry_type'] as String? ?? '';
+          final data = consultantDoc.data() as Map<String, dynamic>?;
+          String industryType = data?['industry_type'] as String? ?? '';
           if (industryType.isNotEmpty) {
             await sendNotificationToIndustry(
               industryType: industryType,
@@ -303,7 +305,6 @@ class OneSignalService {
     }
   }
 
-  // Get OneSignal Player ID for current user
   static Future<String?> getCurrentPlayerId() async {
     try {
       return await OneSignal.User.pushSubscription.id;
@@ -313,7 +314,6 @@ class OneSignalService {
     }
   }
 
-  // Check OneSignal subscription status
   static Future<bool> isSubscribed() async {
     try {
       return await OneSignal.User.pushSubscription.optedIn ?? false;
@@ -323,7 +323,6 @@ class OneSignalService {
     }
   }
 
-  // Request OneSignal permissions
   static Future<bool> requestPermissions() async {
     try {
       bool granted = await OneSignal.Notifications.requestPermission(true);

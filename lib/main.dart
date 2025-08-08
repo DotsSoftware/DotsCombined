@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'api/firebase_api.dart';
+import 'consultants/consultant_notification_listener.dart';
 import 'firebase_options.dart';
 import 'user_type.dart';
 import 'utils/notification_service.dart';
@@ -105,21 +106,21 @@ Future<void> setupNotifications() async {
   });
 }
 
-Future<void> storeFcmTokenInFirestore(String uid, String? fcmToken) async {
+Future<void> storeFcmTokenInFirestore(String userId, String? fcmToken) async {
   if (fcmToken == null) return;
 
   try {
     await Future.wait([
-      FirebaseFirestore.instance.collection('register').doc(uid).set({
+      FirebaseFirestore.instance.collection('register').doc(userId).set({
         'fcmToken': fcmToken,
         'lastTokenUpdate': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true)),
-      FirebaseFirestore.instance.collection('consultant_register').doc(uid).set(
+      FirebaseFirestore.instance.collection('consultant_register').doc(userId).set(
         {'fcmToken': fcmToken, 'lastTokenUpdate': FieldValue.serverTimestamp()},
         SetOptions(merge: true),
       ),
     ]);
-    print('FCM token stored successfully for user: $uid');
+    print('FCM token stored successfully for user: $userId');
   } catch (e) {
     print('Error storing FCM token: $e');
   }

@@ -1,4 +1,4 @@
-import 'notification_helper.dart';
+/*import 'notification_helper.dart';
 import 'onesignal_service.dart';
 import 'notification_service.dart';
 import 'notification_config.dart';
@@ -412,7 +412,6 @@ class _NotificationTestPageState extends State<NotificationTestPage> {
     });
 
     try {
-      await NotificationHelper.checkNotificationStatus();
       await AppNotificationService.checkNotificationSystemStatus();
       setState(() {
         _statusText = 'Notification status check completed. Check console for details.';
@@ -516,3 +515,4 @@ class _NotificationTestPageState extends State<NotificationTestPage> {
     }
   }
 }
+*/
