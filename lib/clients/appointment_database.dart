@@ -599,6 +599,7 @@ class _AppointmentDatabaseState extends State<AppointmentDatabase>
                               isEqualTo: FirebaseAuth.instance.currentUser?.uid,
                             )
                             .where('status', isEqualTo: 'accepted')
+                            .orderBy('timestamp', descending: true)
                             .snapshots(),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState ==

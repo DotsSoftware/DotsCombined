@@ -527,6 +527,7 @@ class _AppointmentDatabaseState extends State<AppointmentDatabase>
                               isEqualTo: currentUserId,
                             )
                             .where('status', isEqualTo: 'accepted')
+                            .orderBy('timestamp', descending: true)
                             .snapshots(),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState ==

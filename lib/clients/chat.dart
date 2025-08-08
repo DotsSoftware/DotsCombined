@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../utils/theme.dart'; // Assuming theme.dart contains appGradient
 import 'dashboard.dart';
+import 'direct_chat.dart'; // Added import for DirectPage
 
 class ChatPage extends StatefulWidget {
   final String consultantEmail;
@@ -107,23 +108,37 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
 
     setState(() => _isLoading = true);
     try {
-      await FirebaseFirestore.instance.collection('chats').add({
-        'text': _messageController.text.trim(),
-        'sender': user!.email,
-        'receiver': widget.consultantEmail,
-        'timestamp': FieldValue.serverTimestamp(),
-        'participants': [user!.email, widget.consultantEmail],
-      });
+      // Resolve chatId by combining user IDs; fallback to emails if needed
+      final current = user;
+      if (current == null) throw Exception('Not authenticated');
 
+      // Lookup consultant by email to get UID
+      final consultantQuery = await FirebaseFirestore.instance
+          .collection('consultant_register')
+          .where('email', isEqualTo: widget.consultantEmail)
+          .limit(1)
+          .get();
+
+      final consultantId =
+          consultantQuery.docs.isNotEmpty ? consultantQuery.docs.first.id : widget.consultantEmail;
+
+      final chatId = '${current.uid}_$consultantId';
+
+      // Ensure inbox doc exists
+      await FirebaseFirestore.instance.collection('inbox').doc(chatId).set({
+        'participants': [current.uid, consultantId],
+        'lastMessage': _messageController.text.trim(),
+        'lastMessageTime': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // Navigate to direct chat where the message can be sent in context
       _messageController.clear();
-      // Scroll to the bottom after sending a message
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      });
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DirectPage(chatId: chatId),
+        ),
+      );
     } catch (e) {
       setState(() {
         errorMessage = 'Error sending message: $e';
@@ -326,15 +341,7 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
                     // Messages
                     Expanded(
                       child: StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('chats')
-                            .where('participants', arrayContains: user?.email)
-                            .where(
-                              'participants',
-                              arrayContains: widget.consultantEmail,
-                            )
-                            .orderBy('timestamp', descending: true)
-                            .snapshots(),
+                        stream: null, // Deprecated: chat now handled via DirectPage and 'inbox' + 'chats/{chatId}/messages'
                         builder: (context, snapshot) {
                           if (snapshot.connectionState ==
                               ConnectionState.waiting) {
