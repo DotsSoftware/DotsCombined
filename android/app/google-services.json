@@ -12,7 +12,12 @@
           "package_name": "com.batau.clientweb"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "861546983434-1bqnh88ebnmcci2466jcsoa7febhk586.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCZ629zCBF4CJWA7FfUMpQIVi5xq97GJlo"
@@ -20,7 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "861546983434-1bqnh88ebnmcci2466jcsoa7febhk586.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "861546983434-2nijufu6kme20cid13a75448frnmiisr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.bataudev.dots"
+              }
+            }
+          ]
         }
       }
     },
@@ -31,7 +48,12 @@
           "package_name": "com.batau.dotscombined"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "861546983434-1bqnh88ebnmcci2466jcsoa7febhk586.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCZ629zCBF4CJWA7FfUMpQIVi5xq97GJlo"
@@ -39,7 +61,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "861546983434-1bqnh88ebnmcci2466jcsoa7febhk586.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "861546983434-2nijufu6kme20cid13a75448frnmiisr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.bataudev.dots"
+              }
+            }
+          ]
         }
       }
     },
@@ -50,7 +84,20 @@
           "package_name": "com.bataudev.dots"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "861546983434-m1jvqtobj0ms99m662ch3t0g9leg6gbh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bataudev.dots",
+            "certificate_hash": "58069f00ddf230251360b2f79495f9ad879fefbb"
+          }
+        },
+        {
+          "client_id": "861546983434-1bqnh88ebnmcci2466jcsoa7febhk586.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCZ629zCBF4CJWA7FfUMpQIVi5xq97GJlo"
@@ -58,7 +105,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "861546983434-1bqnh88ebnmcci2466jcsoa7febhk586.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "861546983434-2nijufu6kme20cid13a75448frnmiisr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.bataudev.dots"
+              }
+            }
+          ]
         }
       }
     },
@@ -69,7 +128,20 @@
           "package_name": "com.bataudev.dotsconsultants"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "861546983434-t2tn734q3guaoh5vksso5910qd2tpjmd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bataudev.dotsconsultants",
+            "certificate_hash": "58069f00ddf230251360b2f79495f9ad879fefbb"
+          }
+        },
+        {
+          "client_id": "861546983434-1bqnh88ebnmcci2466jcsoa7febhk586.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCZ629zCBF4CJWA7FfUMpQIVi5xq97GJlo"
@@ -77,7 +149,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "861546983434-1bqnh88ebnmcci2466jcsoa7febhk586.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "861546983434-2nijufu6kme20cid13a75448frnmiisr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.bataudev.dots"
+              }
+            }
+          ]
         }
       }
     },
@@ -88,7 +172,12 @@
           "package_name": "com.bataudev.play.dots"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "861546983434-1bqnh88ebnmcci2466jcsoa7febhk586.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCZ629zCBF4CJWA7FfUMpQIVi5xq97GJlo"
@@ -96,7 +185,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "861546983434-1bqnh88ebnmcci2466jcsoa7febhk586.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "861546983434-2nijufu6kme20cid13a75448frnmiisr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.bataudev.dots"
+              }
+            }
+          ]
         }
       }
     }

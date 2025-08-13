@@ -45,17 +45,5 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<key>OneSignal_app_groups_key</key>
-	<string>group.com.yourcompany.dots</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app needs access to location when open to show nearby consultants.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>This app needs access to location when in the background for distance calculations.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>This app requires access to the camera to take profile pictures.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>This app requires access to the photo library to select profile pictures.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>This app requires microphone access for voice messages.</string>
 </dict>
 </plist>

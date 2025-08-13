@@ -1,0 +1,12 @@
+# Uncomment this line and set the minimum iOS version Flutter supports
+platform :ios, '12.0'  # Flutter's minimum iOS version
+
+target 'Runner' do
+  use_frameworks!  # Keep this uncommented
+  pod 'Flutter', :podspec => File.join(File.dirname(File.dirname(__FILE__)), 'flutter', 'ios', 'Flutter.podspec')
+
+  target 'RunnerTests' do
+    inherit! :search_paths
+    # Pods for testing
+  end
+end

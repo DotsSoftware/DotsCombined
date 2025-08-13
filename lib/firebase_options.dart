@@ -58,7 +58,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCZ629zCBF4CJWA7FfUMpQIVi5xq97GJlo',
-    appId: '1:861546983434:android:17ba9454d5917b4a856ff3',
+    appId: '1:861546983434:android:1fc5e1eb57032a95856ff3',
     messagingSenderId: '861546983434',
     projectId: 'dots-b3559',
     storageBucket: 'dots-b3559.appspot.com',
@@ -66,10 +66,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBR2d8qPJ6SfnZPdt0T4hh6kdMAeyM9ufA',
-    appId: '1:861546983434:ios:a34f735682c2216a856ff3',
+    appId: '1:861546983434:ios:c179d0631eece98d856ff3',
     messagingSenderId: '861546983434',
     projectId: 'dots-b3559',
     storageBucket: 'dots-b3559.appspot.com',
+    androidClientId: '861546983434-m1jvqtobj0ms99m662ch3t0g9leg6gbh.apps.googleusercontent.com',
+    iosClientId: '861546983434-jedjg0rbvuaqpd4lhqs4gvegiems6ls8.apps.googleusercontent.com',
     iosBundleId: 'com.bataudev.play.dots',
   );
 
