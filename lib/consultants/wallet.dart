@@ -414,6 +414,7 @@ class _WalletPageState extends State<WalletPage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       body: Container(
         decoration: const BoxDecoration(gradient: appGradient),
         child: SafeArea(

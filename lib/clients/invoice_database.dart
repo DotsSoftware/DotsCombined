@@ -139,13 +139,13 @@ class _InvoicesDatabasePageState extends State<InvoicesDatabasePage>
       print('Warning: competencyType is null or empty');
       return '0.00';
     }
-    
+
     final price = competencyPrices[competencyType];
     if (price == null) {
       print('Warning: No price found for competency type: $competencyType');
       return '0.00';
     }
-    
+
     print('Competency price for $competencyType: $price');
     return price;
   }
@@ -155,20 +155,20 @@ class _InvoicesDatabasePageState extends State<InvoicesDatabasePage>
       print('Warning: distanceType is null or empty');
       return '0.00';
     }
-    
+
     // Try public transport prices first
     var price = publicTransportPrices[distanceType];
-    
+
     // If not found, try own vehicle prices
     if (price == null) {
       price = ownVehiclePrices[distanceType];
     }
-    
+
     if (price == null) {
       print('Warning: No price found for distance type: $distanceType');
       return '0.00';
     }
-    
+
     print('Distance price for $distanceType: $price');
     return price;
   }

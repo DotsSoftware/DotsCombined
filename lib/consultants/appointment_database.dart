@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../utils/theme.dart'; // Assuming theme.dart contains appGradient
 
 class AppointmentDatabase extends StatefulWidget {
@@ -133,20 +134,47 @@ class _AppointmentDatabaseState extends State<AppointmentDatabase>
 
   bool _isFutureOrToday(String dateStr) {
     try {
-      List<String> dateParts = dateStr.split('/');
-      DateTime appointmentDate = DateTime(
-        int.parse(dateParts[2]), // year
-        int.parse(dateParts[1]), // month
-        int.parse(dateParts[0]), // day
-      );
+      // First try parsing as ISO format (e.g., "2023-12-31")
+      DateTime? appointmentDate = DateTime.tryParse(dateStr);
+
+      // If ISO parse failed, try custom format
+      if (appointmentDate == null) {
+        // Handle different possible date formats
+        if (dateStr.contains('/')) {
+          List<String> dateParts = dateStr.split('/');
+          if (dateParts.length == 3) {
+            // Try both possible formats: dd/MM/yyyy and MM/dd/yyyy
+            appointmentDate =
+                DateTime.tryParse(
+                  '${dateParts[2]}-${dateParts[1].padLeft(2, '0')}-${dateParts[0].padLeft(2, '0')}',
+                ) ??
+                DateTime.tryParse(
+                  '${dateParts[2]}-${dateParts[0].padLeft(2, '0')}-${dateParts[1].padLeft(2, '0')}',
+                );
+          }
+        }
+      }
+
+      // If still null, try other possible formats
+      appointmentDate ??= DateFormat('MM/dd/yyyy').parse(dateStr);
+
+      if (appointmentDate == null) {
+        throw FormatException('Unable to parse date: $dateStr');
+      }
 
       DateTime now = DateTime.now();
       DateTime today = DateTime(now.year, now.month, now.day);
+      DateTime appointmentDay = DateTime(
+        appointmentDate.year,
+        appointmentDate.month,
+        appointmentDate.day,
+      );
 
-      return appointmentDate.compareTo(today) >= 0;
+      return appointmentDay.compareTo(today) >= 0;
     } catch (e) {
+      debugPrint('Error parsing date: $e');
       setState(() {
-        _errorMessage = 'Error parsing date: $e';
+        _errorMessage = 'Invalid date format: $dateStr';
       });
       return false;
     }
@@ -529,6 +557,8 @@ class _AppointmentDatabaseState extends State<AppointmentDatabase>
                             .where('status', isEqualTo: 'accepted')
                             .snapshots(),
                         builder: (context, snapshot) {
+
+                          
                           if (snapshot.connectionState ==
                               ConnectionState.waiting) {
                             return const Center(

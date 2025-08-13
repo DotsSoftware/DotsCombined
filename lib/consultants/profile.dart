@@ -175,139 +175,151 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Future<void> fetchUploadedDocuments() async {
-  if (user == null) return;
+    if (user == null) return;
 
-  setState(() {
-    _isLoading = true;
-    _errorMessage = null;
-    uploadedDocuments.clear(); // Clear existing documents
-  });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      uploadedDocuments.clear(); // Clear existing documents
+    });
 
-  try {
-    final docSnapshot = await FirebaseFirestore.instance
-        .collection('consultant_register')
-        .doc(user!.uid)
-        .get();
+    try {
+      final docSnapshot = await FirebaseFirestore.instance
+          .collection('consultant_register')
+          .doc(user!.uid)
+          .get();
 
-    if (docSnapshot.exists) {
-      final data = docSnapshot.data() ?? {};
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data() ?? {};
 
-      // Safely check each document type (won't throw if field doesn't exist)
-      _addDocumentIfExists(data, 'idUrl', 'ID', 'idFileName');
-      _addDocumentIfExists(data, 'passportUrl', 'Passport', 'passportFileName');
-      _addDocumentIfExists(data, 'addressProofUrl', 'Proof of Address', 'addressProofFileName');
-      _addDocumentIfExists(data, 'driversLicenseUrl', 'Driver\'s License', 'driversLicenseFileName');
+        // Safely check each document type (won't throw if field doesn't exist)
+        _addDocumentIfExists(data, 'idUrl', 'ID', 'idFileName');
+        _addDocumentIfExists(
+          data,
+          'passportUrl',
+          'Passport',
+          'passportFileName',
+        );
+        _addDocumentIfExists(
+          data,
+          'addressProofUrl',
+          'Proof of Address',
+          'addressProofFileName',
+        );
+        _addDocumentIfExists(
+          data,
+          'driversLicenseUrl',
+          'Driver\'s License',
+          'driversLicenseFileName',
+        );
 
-      // Handle additional files safely
-      if (data.containsKey('additionalFiles')) {
-        final additionalFiles = data['additionalFiles'] as List? ?? [];
-        for (var file in additionalFiles) {
-          if (file is Map<String, dynamic>) {
-            uploadedDocuments.add({
-              'url': file['url']?.toString() ?? '',
-              'name': file['name']?.toString() ?? 'Document',
-              'type': file['type']?.toString() ?? 'Other',
-            });
+        // Handle additional files safely
+        if (data.containsKey('additionalFiles')) {
+          final additionalFiles = data['additionalFiles'] as List? ?? [];
+          for (var file in additionalFiles) {
+            if (file is Map<String, dynamic>) {
+              uploadedDocuments.add({
+                'url': file['url']?.toString() ?? '',
+                'name': file['name']?.toString() ?? 'Document',
+                'type': file['type']?.toString() ?? 'Other',
+              });
+            }
           }
         }
       }
-    }
-  } catch (e) {
-    debugPrint('Error fetching documents: $e');
-    // Don't show error to user if no documents exist - it's a normal case
-    if (!e.toString().contains('does not exist')) {
+    } catch (e) {
+      debugPrint('Error fetching documents: $e');
+      // Don't show error to user if no documents exist - it's a normal case
+      if (!e.toString().contains('does not exist')) {
+        setState(() {
+          _errorMessage = 'Failed to fetch documents';
+        });
+      }
+    } finally {
       setState(() {
-        _errorMessage = 'Failed to fetch documents';
-      });
-    }
-  } finally {
-    setState(() {
-      _isLoading = false;
-    });
-  }
-}
-
-void _addDocumentIfExists(
-  Map<String, dynamic> data, 
-  String urlKey, 
-  String type, 
-  String nameKey,
-) {
-  if (data.containsKey(urlKey)) {
-    final url = data[urlKey]?.toString();
-    if (url != null && url.isNotEmpty) {
-      final name = data.containsKey(nameKey) 
-          ? data[nameKey]?.toString() 
-          : type;
-      uploadedDocuments.add({
-        'url': url,
-        'name': name ?? type,
-        'type': type,
+        _isLoading = false;
       });
     }
   }
-}
 
-  
+  void _addDocumentIfExists(
+    Map<String, dynamic> data,
+    String urlKey,
+    String type,
+    String nameKey,
+  ) {
+    if (data.containsKey(urlKey)) {
+      final url = data[urlKey]?.toString();
+      if (url != null && url.isNotEmpty) {
+        final name = data.containsKey(nameKey)
+            ? data[nameKey]?.toString()
+            : type;
+        uploadedDocuments.add({'url': url, 'name': name ?? type, 'type': type});
+      }
+    }
+  }
 
   Future<void> _uploadNewDocument() async {
-  if (user == null) return;
+    if (user == null) return;
 
-  setState(() {
-    _isLoading = true;
-    _errorMessage = null;
-  });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-  try {
-    FilePickerResult? result = await FilePicker.platform.pickFiles();
-    if (result != null) {
-      File file = File(result.files.single.path!);
-      String fileName = '${user!.uid}/additional_docs/${DateTime.now().millisecondsSinceEpoch}_${result.files.single.name}';
-      
-      // Upload file to storage
-      final storageRef = FirebaseStorage.instance.ref().child(fileName);
-      await storageRef.putFile(file);
-      String fileUrl = await storageRef.getDownloadURL();
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles();
+      if (result != null) {
+        File file = File(result.files.single.path!);
+        String fileName =
+            '${user!.uid}/additional_docs/${DateTime.now().millisecondsSinceEpoch}_${result.files.single.name}';
 
-      // Update Firestore
-      final docRef = FirebaseFirestore.instance
-          .collection('consultant_register')
-          .doc(user!.uid);
+        // Upload file to storage
+        final storageRef = FirebaseStorage.instance.ref().child(fileName);
+        await storageRef.putFile(file);
+        String fileUrl = await storageRef.getDownloadURL();
 
-      await docRef.set({
-        'additionalFiles': FieldValue.arrayUnion([{
-          'url': fileUrl,
-          'name': result.files.single.name,
-          'type': selectedDocumentType,
-        }])
-      }, SetOptions(merge: true));
+        // Update Firestore
+        final docRef = FirebaseFirestore.instance
+            .collection('consultant_register')
+            .doc(user!.uid);
 
-      // Update local state
-      setState(() {
-        uploadedDocuments.add({
-          'url': fileUrl,
-          'name': result.files.single.name,
-          'type': selectedDocumentType,
+        await docRef.set({
+          'additionalFiles': FieldValue.arrayUnion([
+            {
+              'url': fileUrl,
+              'name': result.files.single.name,
+              'type': selectedDocumentType,
+            },
+          ]),
+        }, SetOptions(merge: true));
+
+        // Update local state
+        setState(() {
+          uploadedDocuments.add({
+            'url': fileUrl,
+            'name': result.files.single.name,
+            'type': selectedDocumentType,
+          });
         });
-      });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Document uploaded successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Document uploaded successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to upload document: ${e.toString()}';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
-  } catch (e) {
-    setState(() {
-      _errorMessage = 'Failed to upload document: ${e.toString()}';
-    });
-  } finally {
-    setState(() {
-      _isLoading = false;
-    });
   }
-}
 
   Future<void> _removeDocument(Map<String, String> document) async {
     setState(() {
@@ -657,118 +669,127 @@ void _addDocumentIfExists(
   }
 
   Widget _documentsSection() {
-  return _buildModernCard(
-    title: 'Uploaded Documents',
-    icon: Icons.upload_file_outlined,
-    child: Column(
-      children: [
-        // Display documents if they exist, otherwise show friendly message
-        if (uploadedDocuments.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            child: Text(
-              'No documents uploaded yet',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
-                fontSize: 16,
-              ),
-            ),
-          )
-        else
-          Column(
-            children: uploadedDocuments.map((document) {
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.3),
-                  ),
+    return _buildModernCard(
+      title: 'Uploaded Documents',
+      icon: Icons.upload_file_outlined,
+      child: Column(
+        children: [
+          // Display documents if they exist, otherwise show friendly message
+          if (uploadedDocuments.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Text(
+                'No documents uploaded yet',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 16,
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            document['name'] ?? 'Document',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+              ),
+            )
+          else
+            Column(
+              children: uploadedDocuments.map((document) {
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              document['name'] ?? 'Document',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                          Text(
-                            document['type'] ?? 'Other',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
-                              fontSize: 14,
+                            Text(
+                              document['type'] ?? 'Other',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 14,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.delete,
+                          color: Colors.red.withOpacity(0.8),
+                        ),
+                        onPressed: () => _removeDocument(document),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+
+          const SizedBox(height: 16),
+
+          // Document upload controls
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: selectedDocumentType,
+                  decoration: InputDecoration(
+                    labelText: 'Document Type',
+                    labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Colors.white.withOpacity(0.3),
                       ),
                     ),
-                    IconButton(
-                      icon: Icon(Icons.delete, color: Colors.red.withOpacity(0.8)),
-                      onPressed: () => _removeDocument(document),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        
-        const SizedBox(height: 16),
-        
-        // Document upload controls
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value: selectedDocumentType,
-                decoration: InputDecoration(
-                  labelText: 'Document Type',
-                  labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(
-                      color: Colors.white.withOpacity(0.3),
-                    ),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.1),
                   ),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.1),
+                  items: documentTypes.map((type) {
+                    return DropdownMenuItem(
+                      value: type,
+                      child: Text(
+                        type,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) =>
+                      setState(() => selectedDocumentType = value!),
                 ),
-                items: documentTypes.map((type) {
-                  return DropdownMenuItem(
-                    value: type,
-                    child: Text(type, style: const TextStyle(color: Colors.white)),
-                  );
-                }).toList(),
-                onChanged: (value) => setState(() => selectedDocumentType = value!),
               ),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.upload_file, size: 20),
-              label: const Text('Upload'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF1E3A8A),
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.upload_file, size: 20),
+                label: const Text('Upload'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF1E3A8A),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 20,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: _uploadNewDocument,
               ),
-              onPressed: _uploadNewDocument,
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Color _getLevelColor(int? level) {
     switch (level) {
@@ -956,58 +977,6 @@ void _addDocumentIfExists(
                                     setState(() {
                                       isEditingPhoneNumber =
                                           !isEditingPhoneNumber;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Company Information
-                      SlideTransition(
-                        position: _slideAnimation,
-                        child: FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: _buildModernCard(
-                            title: 'Company Information',
-                            icon: Icons.business_outlined,
-                            child: Column(
-                              children: [
-                                _buildModernTextField(
-                                  label: 'Company Name',
-                                  controller: companyNameController,
-                                  isEditing: isEditingCompanyName,
-                                  firestoreField: 'companyName',
-                                  onEditPress: () {
-                                    setState(() {
-                                      isEditingCompanyName =
-                                          !isEditingCompanyName;
-                                    });
-                                  },
-                                ),
-                                _buildModernTextField(
-                                  label: 'Company Registration',
-                                  controller: companyRegistrationController,
-                                  isEditing: isEditingCompanyRegistration,
-                                  firestoreField: 'companyRegistration',
-                                  onEditPress: () {
-                                    setState(() {
-                                      isEditingCompanyRegistration =
-                                          !isEditingCompanyRegistration;
-                                    });
-                                  },
-                                ),
-                                _buildModernTextField(
-                                  label: 'VAT Registration',
-                                  controller: vatRegistrationController,
-                                  isEditing: isEditingVatRegistration,
-                                  firestoreField: 'vatRegistration',
-                                  onEditPress: () {
-                                    setState(() {
-                                      isEditingVatRegistration =
-                                          !isEditingVatRegistration;
                                     });
                                   },
                                 ),

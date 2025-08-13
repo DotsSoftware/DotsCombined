@@ -13,6 +13,8 @@ class OneSignalService {
   factory OneSignalService() => _instance;
   OneSignalService._internal();
 
+  static bool _debugEnabled = true;
+
   // OneSignal App ID from configuration
   static String get _oneSignalAppId => NotificationConfig.oneSignalAppId;
 
@@ -22,14 +24,18 @@ class OneSignalService {
   static Future<void> initialize() async {
     try {
       if (!NotificationConfig.isOneSignalConfigured) {
-        print('⚠️ OneSignal App ID not configured. Please update NotificationConfig.oneSignalAppId');
+        print(
+          '⚠️ OneSignal App ID not configured. Please update NotificationConfig.oneSignalAppId',
+        );
         return;
       }
 
       OneSignal.initialize(_oneSignalAppId);
       await OneSignal.Notifications.requestPermission(true);
       OneSignal.Notifications.addClickListener(_onNotificationClicked);
-      OneSignal.Notifications.addForegroundWillDisplayListener(_onForegroundNotificationReceived);
+      OneSignal.Notifications.addForegroundWillDisplayListener(
+        _onForegroundNotificationReceived,
+      );
       _setupUserSubscription();
 
       print('✅ OneSignal initialized successfully');
@@ -54,27 +60,46 @@ class OneSignalService {
   static Future<void> _storeOneSignalPlayerId(String userId) async {
     try {
       String? playerId = await OneSignal.User.pushSubscription.id;
-      if (playerId != null) {
-        await Future.wait([
-          FirebaseFirestore.instance.collection('register').doc(userId).set(
-            {
-              'oneSignalPlayerId': playerId,
-              'lastOneSignalUpdate': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true),
-          ),
-          FirebaseFirestore.instance.collection('consultant_register').doc(userId).set(
-            {
-              'oneSignalPlayerId': playerId,
-              'lastOneSignalUpdate': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true),
-          ),
-        ]);
-        print('✅ OneSignal Player ID stored for user: $userId');
+
+      if (_debugEnabled) {
+        print('ℹ️ [OneSignal] Storing PlayerID for user: $userId');
+        print('ℹ️ [OneSignal] PlayerID: $playerId');
+      }
+
+      if (playerId != null && playerId.isNotEmpty) {
+        final updateData = {
+          'oneSignalPlayerId': playerId,
+          'lastOneSignalUpdate': FieldValue.serverTimestamp(),
+          'notificationEnabled': true,
+        };
+
+        final batch = FirebaseFirestore.instance.batch();
+
+        final userRef = FirebaseFirestore.instance
+            .collection('register')
+            .doc(userId);
+        batch.set(userRef, updateData, SetOptions(merge: true));
+
+        final consultantRef = FirebaseFirestore.instance
+            .collection('consultant_register')
+            .doc(userId);
+        batch.set(consultantRef, updateData, SetOptions(merge: true));
+
+        await batch.commit();
+
+        if (_debugEnabled) {
+          print('✅ [OneSignal] Player ID stored successfully');
+        }
+      } else {
+        if (_debugEnabled) {
+          print('⚠️ [OneSignal] No PlayerID available for user: $userId');
+        }
       }
     } catch (e) {
-      print('❌ Error storing OneSignal Player ID: $e');
+      print('❌ [OneSignal] Error storing Player ID: $e');
+      if (_debugEnabled) {
+        print('Stack trace: ${e.toString()}');
+      }
     }
   }
 
@@ -89,7 +114,8 @@ class OneSignalService {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           navigatorKey.currentState?.push(
             MaterialPageRoute(
-              builder: (_) => NotificationHandlerPage(payload: notificationPayload),
+              builder: (_) =>
+                  NotificationHandlerPage(payload: notificationPayload),
             ),
           );
         });
@@ -99,8 +125,12 @@ class OneSignalService {
     }
   }
 
-  static void _onForegroundNotificationReceived(OSNotificationWillDisplayEvent event) {
-    print('🔔 OneSignal foreground notification received: ${event.notification.title}');
+  static void _onForegroundNotificationReceived(
+    OSNotificationWillDisplayEvent event,
+  ) {
+    print(
+      '🔔 OneSignal foreground notification received: ${event.notification.title}',
+    );
     event.notification.display();
   }
 
@@ -140,9 +170,13 @@ class OneSignalService {
       );
 
       if (response.statusCode == 200) {
-        print('✅ OneSignal notification sent successfully to ${playerIds.length} users');
+        print(
+          '✅ OneSignal notification sent successfully to ${playerIds.length} users',
+        );
       } else {
-        print('❌ Failed to send OneSignal notification: ${response.statusCode} - ${response.body}');
+        print(
+          '❌ Failed to send OneSignal notification: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('❌ Error sending OneSignal notification: $e');
@@ -158,18 +192,38 @@ class OneSignalService {
     String? imageUrl,
   }) async {
     try {
+      if (_debugEnabled) {
+        print(
+          'ℹ️ [OneSignal] Querying consultants for industry: $industryType',
+        );
+      }
+
       QuerySnapshot consultantSnapshot = await FirebaseFirestore.instance
           .collection('consultant_register')
           .where('industry_type', isEqualTo: industryType)
           .where('applicationStatus', isEqualTo: 'verified')
+          .where('notificationEnabled', isEqualTo: true)
           .get();
 
       List<String> playerIds = [];
+      List<String> consultantIds = [];
+
       for (var consultant in consultantSnapshot.docs) {
-        final data = consultant.data() as Map<String, dynamic>?;
-        String? playerId = data?['oneSignalPlayerId'] as String?;
+        final consultantData = consultant.data() as Map<String, dynamic>;
+        String? playerId = consultantData['oneSignalPlayerId'] as String?;
         if (playerId != null && playerId.isNotEmpty) {
           playerIds.add(playerId);
+          consultantIds.add(consultant.id);
+        }
+      }
+
+      if (_debugEnabled) {
+        print(
+          'ℹ️ [OneSignal] Found ${consultantSnapshot.docs.length} consultants',
+        );
+        print('ℹ️ [OneSignal] Found ${playerIds.length} with PlayerIDs');
+        if (playerIds.isNotEmpty) {
+          print('ℹ️ [OneSignal] First PlayerID: ${playerIds.first}');
         }
       }
 
@@ -181,11 +235,42 @@ class OneSignalService {
           data: data,
           imageUrl: imageUrl,
         );
+
+        // Store notification log
+        await _logNotificationSent(
+          industryType,
+          playerIds.length,
+          consultantIds,
+        );
       } else {
-        print('⚠️ No OneSignal Player IDs found for industry: $industryType');
+        print(
+          '⚠️ [OneSignal] No valid PlayerIDs found for industry: $industryType',
+        );
+        // Consider falling back to FCM here
       }
     } catch (e) {
-      print('❌ Error sending OneSignal notification to industry: $e');
+      print('❌ [OneSignal] Error in sendNotificationToIndustry: $e');
+      if (_debugEnabled) {
+        print('Stack trace: ${e.toString()}');
+      }
+    }
+  }
+
+  static Future<void> _logNotificationSent(
+    String industryType,
+    int recipientCount,
+    List<String> consultantIds,
+  ) async {
+    try {
+      await FirebaseFirestore.instance.collection('notification_logs').add({
+        'type': 'industry_broadcast',
+        'industry': industryType,
+        'recipient_count': recipientCount,
+        'consultant_ids': consultantIds,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('⚠️ Failed to log notification: $e');
     }
   }
 
@@ -219,7 +304,9 @@ class OneSignalService {
         data: notificationData,
       );
 
-      print('✅ OneSignal client request notification sent for industry: $industryType');
+      print(
+        '✅ OneSignal client request notification sent for industry: $industryType',
+      );
     } catch (e) {
       print('❌ Error sending OneSignal client request notification: $e');
     }
@@ -251,7 +338,9 @@ class OneSignalService {
             imageUrl: imageUrl,
           );
         } else {
-          print('⚠️ No OneSignal Player ID found for consultant: $consultantId');
+          print(
+            '⚠️ No OneSignal Player ID found for consultant: $consultantId',
+          );
         }
       } else {
         print('⚠️ Consultant document not found: $consultantId');
@@ -293,7 +382,8 @@ class OneSignalService {
             await sendNotificationToIndustry(
               industryType: industryType,
               title: 'OneSignal Industry Test',
-              body: 'Testing OneSignal notifications for $industryType industry',
+              body:
+                  'Testing OneSignal notifications for $industryType industry',
               data: {'test': 'onesignal_industry_test'},
             );
             print('✅ OneSignal industry test notification sent');

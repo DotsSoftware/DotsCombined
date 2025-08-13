@@ -14,6 +14,8 @@ import 'dashboard.dart';
 import 'inbox.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 
+enum DocumentUploadStatus { idle, uploading, uploaded, error }
+
 class BusinessSitePage extends StatefulWidget {
   const BusinessSitePage({Key? key}) : super(key: key);
 
@@ -56,6 +58,13 @@ class _BusinessSitePageState extends State<BusinessSitePage>
     'Document5': {'name': '', 'url': ''},
   };
 
+  final Map<String, DocumentUploadStatus> _documentStatus = {
+    'Document1': DocumentUploadStatus.idle,
+    'Document2': DocumentUploadStatus.idle,
+    'Document3': DocumentUploadStatus.idle,
+    'Document4': DocumentUploadStatus.idle,
+    'Document5': DocumentUploadStatus.idle,
+  };
   bool _isLoading = false;
   bool _isUploading = false;
   late AnimationController _animationController;
@@ -713,7 +722,7 @@ class _BusinessSitePageState extends State<BusinessSitePage>
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Your site inspection request has been submitted successfully. Choose an option to proceed.',
+                  'Your client business meeting request has been submitted successfully. Choose an option to proceed.',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.black.withOpacity(0.7),
@@ -838,7 +847,10 @@ class _BusinessSitePageState extends State<BusinessSitePage>
   }
 
   Future<void> _pickDocument(String fieldName) async {
-    setState(() => _isUploading = true);
+    setState(() {
+      _documentStatus[fieldName] = DocumentUploadStatus.uploading;
+    });
+
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -848,7 +860,6 @@ class _BusinessSitePageState extends State<BusinessSitePage>
       if (result != null && result.files.first.bytes != null) {
         String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
         String originalFileName = result.files.first.name;
-        String fileExtension = originalFileName.split('.').last;
         String uniqueFileName = '${timestamp}_$originalFileName';
 
         Reference storageRef = FirebaseStorage.instance
@@ -867,6 +878,7 @@ class _BusinessSitePageState extends State<BusinessSitePage>
             'name': originalFileName,
             'url': downloadUrl,
           };
+          _documentStatus[fieldName] = DocumentUploadStatus.uploaded;
         });
 
         if (appointmentId != null) {
@@ -877,25 +889,30 @@ class _BusinessSitePageState extends State<BusinessSitePage>
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Document "$originalFileName" uploaded successfully'),
+            content: Text('"$originalFileName" uploaded successfully'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
           ),
         );
+      } else {
+        setState(() {
+          _documentStatus[fieldName] = DocumentUploadStatus.idle;
+        });
       }
     } catch (e) {
       setState(() {
         errorMessage = 'Error uploading document: $e';
+        _documentStatus[fieldName] = DocumentUploadStatus.error;
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error uploading document: $e'),
+          content: Text('Upload failed: ${e.toString()}'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } finally {
-      setState(() => _isUploading = false);
     }
   }
 
@@ -1005,50 +1022,98 @@ class _BusinessSitePageState extends State<BusinessSitePage>
   }
 
   Widget _buildDocumentField(String fieldName) {
-    return GestureDetector(
-      onTap: () => _pickDocument(fieldName),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8),
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.3)),
+    final document = documentFields[fieldName];
+    final status = _documentStatus[fieldName] ?? DocumentUploadStatus.idle;
+    final hasDocument = document?['name']?.isNotEmpty == true;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: status == DocumentUploadStatus.uploaded
+              ? Colors.green.withOpacity(0.5)
+              : status == DocumentUploadStatus.error
+              ? Colors.red.withOpacity(0.5)
+              : Colors.white.withOpacity(0.3),
+          width: 1.5,
         ),
-        child: Row(
-          children: [
-            _isUploading
-                ? const SizedBox(
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: status == DocumentUploadStatus.uploading
+              ? null
+              : () => _pickDocument(fieldName),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Status icon
+                if (status == DocumentUploadStatus.uploading)
+                  const SizedBox(
                     width: 24,
                     height: 24,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Color(0xFF1E3A8A),
-                      ),
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   )
-                : Icon(
+                else if (status == DocumentUploadStatus.uploaded)
+                  const Icon(Icons.check_circle, color: Colors.green, size: 24)
+                else
+                  Icon(
                     Icons.upload_file,
                     color: Colors.white.withOpacity(0.7),
                     size: 24,
                   ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                documentFields[fieldName]?['name']?.isNotEmpty == true
-                    ? documentFields[fieldName]!['name']!
-                    : 'Select Document (PDF, DOC, JPG, PNG)',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
-                  fontSize: 14,
+
+                const SizedBox(width: 12),
+
+                // Document name
+                Expanded(
+                  child: Text(
+                    hasDocument
+                        ? document!['name']!
+                        : 'Select Document (PDF, DOC, JPG, PNG)',
+                    style: TextStyle(
+                      color: hasDocument
+                          ? Colors.white
+                          : Colors.white.withOpacity(0.7),
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
+
+                // Clear button for uploaded documents
+                if (hasDocument && status != DocumentUploadStatus.uploading)
+                  IconButton(
+                    icon: const Icon(Icons.clear, size: 20),
+                    color: Colors.white.withOpacity(0.7),
+                    onPressed: () => _clearDocument(fieldName),
+                  ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _clearDocument(String fieldName) async {
+    setState(() {
+      documentFields[fieldName] = {'name': '', 'url': ''};
+      _documentStatus[fieldName] = DocumentUploadStatus.idle;
+    });
+
+    if (appointmentId != null) {
+      await siteMeetings.doc(appointmentId).update({
+        'Documents': documentFields,
+      });
+    }
   }
 
   @override
@@ -1116,7 +1181,7 @@ class _BusinessSitePageState extends State<BusinessSitePage>
                               const SizedBox(width: 16),
                               const Expanded(
                                 child: Text(
-                                  'Business Site Inspection',
+                                  'Client Business Meeting',
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
@@ -1170,18 +1235,18 @@ class _BusinessSitePageState extends State<BusinessSitePage>
                           ),
                         ),
 
-                      // Inspection Details Card
+                      // Meeting Details Card
                       SlideTransition(
                         position: _slideAnimation,
                         child: FadeTransition(
                           opacity: _fadeAnimation,
                           child: _buildModernCard(
-                            title: 'Inspection Details',
-                            icon: Icons.search,
+                            title: 'Meeting Details',
+                            icon: Icons.meeting_room,
                             child: Column(
                               children: [
                                 _buildInputField(
-                                  label: 'What to Inspect',
+                                  label: 'What to Discuss',
                                   controller: whatToInspectController,
                                   isRequired: true,
                                 ),
@@ -1191,7 +1256,7 @@ class _BusinessSitePageState extends State<BusinessSitePage>
                                   isRequired: true,
                                 ),
                                 _buildInputField(
-                                  label: 'Site Name',
+                                  label: 'Meeting Name',
                                   controller: siteNameController,
                                   isRequired: true,
                                 ),
@@ -1206,7 +1271,7 @@ class _BusinessSitePageState extends State<BusinessSitePage>
                                   mapPickerCallback: _showLocationPicker,
                                 ),
                                 _buildInputField(
-                                  label: 'Job Date',
+                                  label: 'Meeting Date',
                                   controller: _controllerJobDate,
                                   isRequired: true,
                                   isDate: true,
@@ -1217,7 +1282,7 @@ class _BusinessSitePageState extends State<BusinessSitePage>
                                   ),
                                 ),
                                 _buildInputField(
-                                  label: 'Job Time',
+                                  label: 'Meeting Time',
                                   controller: _controllerJobTime,
                                   isRequired: true,
                                   isTime: true,
@@ -1828,7 +1893,7 @@ class _LocationAutocompleteState extends State<LocationAutocomplete> {
     return CompositedTransformTarget(
       link: _layerLink,
       child: _buildInputField(
-        label: 'Site Location',
+        label: 'Meeting Location',
         controller: widget.controller,
         isRequired: true,
         isLocation: true,
@@ -1880,7 +1945,7 @@ class _LocationAutocompleteState extends State<LocationAutocomplete> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Color(0xFF1E3A8A), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 16,

@@ -15,6 +15,8 @@ import 'webview.dart';
 import 'competency.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import 'yoco_payment.dart';
+
 class SearchPage extends StatefulWidget {
   final String requestType;
   final String industryType;
@@ -188,29 +190,14 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
     return; // Explicit return to satisfy Future<void>
   }
 
-  Future<void> sendAwesomeNotification(String consultantId, String requestId) async {
+  Future<void> sendAwesomeNotification(
+    String consultantId,
+    String requestId,
+  ) async {
     try {
-      // Get consultant's FCM token
-      DocumentSnapshot consultantDoc = await FirebaseFirestore.instance
-          .collection('consultant_register')
-          .doc(consultantId)
-          .get();
-
-      if (!consultantDoc.exists) {
-        print('Consultant document not found: $consultantId');
-        return;
-      }
-
-      final consultantData = consultantDoc.data() as Map<String, dynamic>;
-      final fcmToken = consultantData['fcmToken'] as String?;
-
-      if (fcmToken == null || fcmToken.isEmpty) {
-        print('No FCM token found for consultant: $consultantId');
-        return;
-      }
-
-      // Get appointment details for notification
       final userId = FirebaseAuth.instance.currentUser?.uid;
+
+      // Fetch appointment details
       QuerySnapshot appointmentSnapshot = await FirebaseFirestore.instance
           .collection('selection')
           .doc(userId)
@@ -219,36 +206,53 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
           .limit(1)
           .get();
 
-      Map<String, dynamic> appointmentData = {};
-      if (appointmentSnapshot.docs.isNotEmpty) {
-        appointmentData = appointmentSnapshot.docs.first.data() as Map<String, dynamic>;
-      }
+      Map<String, dynamic> appointmentData = appointmentSnapshot.docs.isNotEmpty
+          ? appointmentSnapshot.docs.first.data() as Map<String, dynamic>
+          : {};
 
-      // Use the improved notification service (existing implementation)
-      await AppNotificationService.sendClientRequestNotification(
-        requestId: requestId,
-        industryType: widget.industryType,
-        clientId: FirebaseAuth.instance.currentUser?.uid ?? '',
-        jobDate: appointmentData['jobDate'] ?? '',
-        jobTime: appointmentData['jobTime'] ?? '',
-        siteLocation: appointmentData['siteLocation'] ?? '',
-        jobDescription: appointmentData['jobDescription'] ?? '',
-      );
+      // Prepare notification data
+      final notificationData = {
+        'consultantId': consultantId,
+        'requestId': requestId,
+        'clientId': userId,
+        'timestamp': FieldValue.serverTimestamp(),
+        'status': 'pending',
+        'industry_type': widget.industryType,
+        'jobDate': appointmentData['jobDate'] ?? '',
+        'jobTime': appointmentData['jobTime'] ?? '',
+        'siteLocation': appointmentData['siteLocation'] ?? '',
+        'jobDescription': appointmentData['jobDescription'] ?? '',
+      };
 
-      // Also send via OneSignal for better reliability
+      // Send via OneSignal
       await OneSignalService.sendClientRequestNotification(
         requestId: requestId,
         industryType: widget.industryType,
-        clientId: FirebaseAuth.instance.currentUser?.uid ?? '',
+        clientId: userId ?? '',
         jobDate: appointmentData['jobDate'] ?? '',
         jobTime: appointmentData['jobTime'] ?? '',
         siteLocation: appointmentData['siteLocation'] ?? '',
         jobDescription: appointmentData['jobDescription'] ?? '',
       );
 
-      print('Notifications sent to consultant: $consultantId (both Awesome and OneSignal)');
+      // ===== DUAL WRITE =====
+      // Primary: notification record (if needed)
+      await FirebaseFirestore.instance
+          .collection('notifications')
+          .doc(requestId)
+          .set(notificationData, SetOptions(merge: true));
+
+      // Secondary: active_requests backup
+      await FirebaseFirestore.instance
+          .collection('active_requests')
+          .doc()
+          .set(notificationData);
+      // ===== END DUAL WRITE =====
+
+      print('Notification sent to consultant: $consultantId');
     } catch (e) {
-      print('Error sending notifications to consultant $consultantId: $e');
+      print('Error sending notification to consultant $consultantId: $e');
+      // Consider adding error recovery here
     }
   }
 
@@ -554,27 +558,54 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
           Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () {
-                final consultantId = selectedConsultant!['uid'] ?? '';
-                if (consultantId.isNotEmpty && activeRequestId != null) {
+              onTap: () async {
+                try {
+                  String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+                  // Create and navigate to chat
+                  String consultantId = selectedConsultant!['uid'] ?? '';
+                  await _createAndNavigateToChat(consultantId);
+
+                  // Fetch appointment details for payment info
+                  QuerySnapshot appointmentSnapshot = await FirebaseFirestore
+                      .instance
+                      .collection('selection')
+                      .doc(userId)
+                      .collection('appointments')
+                      .orderBy('timestamp', descending: true)
+                      .limit(1)
+                      .get();
+
+                  Map<String, dynamic> appointmentData =
+                      appointmentSnapshot.docs.isNotEmpty
+                      ? appointmentSnapshot.docs.first.data()
+                            as Map<String, dynamic>
+                      : {};
+
+                  // Define payment parameters
+                  double paymentAmount =
+                      100.0; // Replace with actual amount from Firestore or logic
+                  String currency = 'ZAR';
+                  String description =
+                      appointmentData['jobDescription'] ??
+                      'Consultant Service Payment';
+                  String customerReference = activeRequestId ?? userId;
+
+                  // Navigate to YocoPaymentPage with required parameters
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => NotificationHandlerPage(
-                        payload: {
-                          'requestId': activeRequestId!,
-                          'consultantId': consultantId,
-                        },
+                      builder: (context) => YocoPaymentPage(
+                        amount: paymentAmount,
+                        currency: currency,
+                        description: description,
+                        customerReference: customerReference,
                       ),
                     ),
                   );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Invalid consultant or request ID'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                } catch (e) {
+                  print('Error in onPressed: $e');
+                  print('Stack trace: ${StackTrace.current}');
                 }
               },
               borderRadius: BorderRadius.circular(16),
@@ -635,35 +666,63 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
     try {
       String clientId = FirebaseAuth.instance.currentUser?.uid ?? '';
       if (clientId.isEmpty || consultantId.isEmpty) {
-        throw Exception('ClientId or ConsultantId is empty');
+        throw Exception('ClientId or ConsultantId is empty.');
       }
 
+      // Create chat ID using client and consultant IDs
       chatId = '${clientId}_$consultantId';
 
+      print('Creating chat for: $clientId and $consultantId');
+
+      // Create or update chat document in inbox collection
       await FirebaseFirestore.instance.collection('inbox').doc(chatId).set({
         'participants': [clientId, consultantId],
         'lastMessage': '',
         'lastMessageTime': FieldValue.serverTimestamp(),
-        'requestId': activeRequestId,
+        'requestId': activeRequestId, // Store the request ID
       }, SetOptions(merge: true));
 
+      // Fetch appointment details for payment info
+      QuerySnapshot appointmentSnapshot = await FirebaseFirestore.instance
+          .collection('selection')
+          .doc(clientId)
+          .collection('appointments')
+          .orderBy('timestamp', descending: true)
+          .limit(1)
+          .get();
+
+      Map<String, dynamic> appointmentData = appointmentSnapshot.docs.isNotEmpty
+          ? appointmentSnapshot.docs.first.data() as Map<String, dynamic>
+          : {};
+
+      // Define payment parameters
+      double paymentAmount =
+          appointmentData['consultantFee']?.toDouble() ?? 100.0;
+      String currency = 'ZAR';
+      String description = appointmentData['jobDescription']?.isNotEmpty == true
+          ? appointmentData['jobDescription']
+          : 'Consultant Service Payment';
+      String customerReference = activeRequestId?.isNotEmpty == true
+          ? activeRequestId!
+          : clientId;
+
+      // Navigate to YocoPaymentPage
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => NotificationHandlerPage(
-            payload: {
-              'requestId': activeRequestId ?? '',
-              'consultantId': consultantId,
-            },
+          builder: (context) => YocoPaymentPage(
+            amount: paymentAmount,
+            currency: currency,
+            description: description,
+            customerReference: customerReference,
           ),
         ),
       );
     } catch (e) {
-      print('Error creating chat: $e');
+      print('Error in _createAndNavigateToChat: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to create chat. Please try again.'),
-          backgroundColor: Colors.red,
+          content: Text('Failed to create chat or proceed to payment: $e'),
         ),
       );
     }

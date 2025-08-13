@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../utils/theme.dart'; // Assuming theme.dart contains appGradient
+import 'chat.dart';
 import 'direct_chat.dart';
 import 'login_register_page.dart';
 import 'continue.dart'; // Assuming ContinuePage is the navigation target
@@ -204,10 +205,31 @@ class _ChatInboxPageState extends State<ChatInboxPage>
 
   void _navigateToChat(String chatId) {
     try {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => DirectPage(chatId: chatId)),
-      );
+      final chatDoc = FirebaseFirestore.instance
+          .collection('inbox')
+          .doc(chatId);
+      chatDoc.get().then((doc) {
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>;
+          final participants = data['participants'] as List<dynamic>;
+          final otherUserEmail =
+              participants.firstWhere(
+                    (email) =>
+                        email != FirebaseAuth.instance.currentUser?.email,
+                    orElse: () => '',
+                  )
+                  as String;
+
+          if (otherUserEmail.isNotEmpty) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChatPage(consultantEmail: otherUserEmail),
+              ),
+            );
+          }
+        }
+      });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -240,7 +262,9 @@ class _ChatInboxPageState extends State<ChatInboxPage>
             final subtitle = appointmentSnapshot.data ?? 'Loading...';
             final userName = userSnapshot.data ?? 'Loading...';
             final timestamp = _formatTimestamp(
-              data['lastMessageTime'] as Timestamp?,
+              data['lastMessageTime'] is Timestamp
+                  ? data['lastMessageTime'] as Timestamp
+                  : null,
             );
 
             return SlideTransition(
@@ -463,6 +487,8 @@ class _ChatInboxPageState extends State<ChatInboxPage>
                   stream: FirebaseFirestore.instance
                       .collection('inbox')
                       .where('participants', arrayContains: currentUserId)
+                      .orderBy('lastMessageTime', descending: true)
+                      .limit(100)
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -563,21 +589,13 @@ class _ChatInboxPageState extends State<ChatInboxPage>
                       );
                     }
 
-                    // Sort messages by timestamp manually
-                    var sortedDocs = snapshot.data!.docs;
-                    sortedDocs.sort((a, b) {
-                      Timestamp? aTime = a['lastMessageTime'] as Timestamp?;
-                      Timestamp? bTime = b['lastMessageTime'] as Timestamp?;
-                      return (bTime ?? Timestamp.now()).compareTo(
-                        aTime ?? Timestamp.now(),
-                      );
-                    });
-
                     return ListView.builder(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: sortedDocs.length,
-                      itemBuilder: (context, index) =>
-                          _buildChatCard(chat: sortedDocs[index], index: index),
+                      itemCount: snapshot.data!.docs.length,
+                      itemBuilder: (context, index) => _buildChatCard(
+                        chat: snapshot.data!.docs[index],
+                        index: index,
+                      ),
                     );
                   },
                 ),

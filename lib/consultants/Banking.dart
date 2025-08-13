@@ -14,11 +14,14 @@ class BankingPage extends StatefulWidget {
 class _BankingPageState extends State<BankingPage>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _cardNumberController = TextEditingController();
-  final TextEditingController _cardHolderController = TextEditingController();
-  final TextEditingController _expiryDateController = TextEditingController();
-  final TextEditingController _cvvController = TextEditingController();
-  String? _bankName;
+  final TextEditingController _bankNameController = TextEditingController();
+  final TextEditingController _branchCodeController = TextEditingController();
+  final TextEditingController _accountNumberController =
+      TextEditingController();
+  final TextEditingController _accountTypeController = TextEditingController();
+  final TextEditingController _accountHolderController =
+      TextEditingController();
+
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -68,10 +71,11 @@ class _BankingPageState extends State<BankingPage>
   @override
   void dispose() {
     _animationController.dispose();
-    _cardNumberController.dispose();
-    _cardHolderController.dispose();
-    _expiryDateController.dispose();
-    _cvvController.dispose();
+    _bankNameController.dispose();
+    _branchCodeController.dispose();
+    _accountNumberController.dispose();
+    _accountTypeController.dispose();
+    _accountHolderController.dispose();
     super.dispose();
   }
 
@@ -87,15 +91,17 @@ class _BankingPageState extends State<BankingPage>
             .doc(user.uid)
             .get();
 
-        if (docSnapshot.exists &&
-            docSnapshot.data()!.containsKey('bankDetails')) {
-          Map<String, dynamic> bankDetails = docSnapshot['bankDetails'];
+        if (docSnapshot.exists) {
           setState(() {
-            _cardNumberController.text = bankDetails['cardNumber'] ?? '';
-            _cardHolderController.text = bankDetails['cardHolder'] ?? '';
-            _expiryDateController.text = bankDetails['expiryDate'] ?? '';
-            _cvvController.text = bankDetails['cvv'] ?? '';
-            _bankName = bankDetails['bankName'];
+            _bankNameController.text = docSnapshot.data()?['Bank Name'] ?? '';
+            _branchCodeController.text =
+                docSnapshot.data()?['Branch Code'] ?? '';
+            _accountNumberController.text =
+                docSnapshot.data()?['Account Number'] ?? '';
+            _accountTypeController.text =
+                docSnapshot.data()?['Account Type'] ?? '';
+            _accountHolderController.text =
+                docSnapshot.data()?['Account Holder'] ?? '';
           });
         }
       } catch (e) {
@@ -124,23 +130,18 @@ class _BankingPageState extends State<BankingPage>
         _errorMessage = null;
       });
       try {
-        // Store the bank details in a map to pass to the next page
-        final bankDetails = {
-          'cardNumber': _cardNumberController.text,
-          'cardHolder': _cardHolderController.text,
-          'expiryDate': _expiryDateController.text,
-          'cvv': _cvvController.text,
-          'bankName': _bankName,
-          'lastUpdated': FieldValue.serverTimestamp(),
-        };
-
-        // Save to Firestore
         await FirebaseFirestore.instance
             .collection('consultant_register')
             .doc(user.uid)
-            .set({'bankDetails': bankDetails}, SetOptions(merge: true));
+            .set({
+              'Bank Name': _bankNameController.text,
+              'Branch Code': _branchCodeController.text,
+              'Account Number': _accountNumberController.text,
+              'Account Type': _accountTypeController.text,
+              'Account Holder': _accountHolderController.text,
+              'lastUpdated': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
 
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Bank details saved successfully!'),
@@ -149,7 +150,6 @@ class _BankingPageState extends State<BankingPage>
           ),
         );
 
-        // Navigate to VerificationDocumentsPage with the bank details
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => VerificationDocumentsPage()),
@@ -204,7 +204,7 @@ class _BankingPageState extends State<BankingPage>
               ),
               const SizedBox(height: 12),
               Text(
-                'Please double-check your card details before submitting. '
+                'Please double-check your bank details before submitting. '
                 'DOTS is not responsible for payments not received due to incorrect information entered. '
                 'Ensure all details match your bank records exactly.',
                 style: TextStyle(
@@ -398,7 +398,7 @@ class _BankingPageState extends State<BankingPage>
 
                         const SizedBox(height: 32),
 
-                        // Bank Selection
+                        // Bank Information
                         SlideTransition(
                           position: _slideAnimation,
                           child: FadeTransition(
@@ -408,9 +408,10 @@ class _BankingPageState extends State<BankingPage>
                               icon: Icons.account_balance_outlined,
                               child: Column(
                                 children: [
-                                  DropdownButtonFormField<String>(
+                                  TextFormField(
+                                    controller: _bankNameController,
                                     decoration: InputDecoration(
-                                      labelText: 'Select Bank',
+                                      labelText: 'Bank Name',
                                       labelStyle: const TextStyle(
                                         color: Colors.white,
                                       ),
@@ -428,79 +429,62 @@ class _BankingPageState extends State<BankingPage>
                                           color: Colors.white.withOpacity(0.3),
                                         ),
                                       ),
+                                      prefixIcon: Icon(
+                                        Icons.account_balance,
+                                        color: Colors.white.withOpacity(0.8),
+                                      ),
                                     ),
-                                    value: _bankName,
-                                    items:
-                                        [
-                                          'Absa',
-                                          'Capitec',
-                                          'First National Bank',
-                                          'Investec',
-                                          'Nedbank',
-                                          'Standard Bank',
-                                          'African Bank',
-                                          'Bidvest Bank',
-                                          'Discovery Bank',
-                                          'TymeBank',
-                                          'Other',
-                                        ].map((String value) {
-                                          return DropdownMenuItem<String>(
-                                            value: value,
-                                            child: Text(
-                                              value,
-                                              style: const TextStyle(
-                                                color: Colors.black,
-                                              ),
-                                            ),
-                                          );
-                                        }).toList(),
-                                    onChanged: (String? newValue) {
-                                      setState(() {
-                                        _bankName = newValue;
-                                      });
-                                    },
+                                    style: const TextStyle(color: Colors.white),
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
-                                        return 'Please select your bank';
+                                        return 'Please enter bank name';
                                       }
                                       return null;
                                     },
-                                    dropdownColor: Colors.white,
-                                    icon: Icon(
-                                      Icons.arrow_drop_down,
-                                      color: Colors.white.withOpacity(0.8),
-                                    ),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                    ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // Card Details
-                        SlideTransition(
-                          position: _slideAnimation,
-                          child: FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: _buildModernCard(
-                              title: 'Card Details',
-                              icon: Icons.credit_card_outlined,
-                              child: Column(
-                                children: [
+                                  const SizedBox(height: 16),
                                   TextFormField(
-                                    controller: _cardNumberController,
+                                    controller: _branchCodeController,
                                     decoration: InputDecoration(
-                                      labelText: 'Card Number',
-                                      hintText: '1234 5678 9012 3456',
+                                      labelText: 'Branch Code',
                                       labelStyle: const TextStyle(
                                         color: Colors.white,
                                       ),
-                                      hintStyle: TextStyle(
-                                        color: Colors.white.withOpacity(0.5),
+                                      filled: true,
+                                      fillColor: Colors.white.withOpacity(0.1),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(
+                                          color: Colors.white.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(
+                                          color: Colors.white.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      prefixIcon: Icon(
+                                        Icons.numbers,
+                                        color: Colors.white.withOpacity(0.8),
+                                      ),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    style: const TextStyle(color: Colors.white),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Please enter branch code';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  TextFormField(
+                                    controller: _accountNumberController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Account Number',
+                                      labelStyle: const TextStyle(
+                                        color: Colors.white,
                                       ),
                                       filled: true,
                                       fillColor: Colors.white.withOpacity(0.1),
@@ -525,25 +509,53 @@ class _BankingPageState extends State<BankingPage>
                                     style: const TextStyle(color: Colors.white),
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
-                                        return 'Please enter card number';
-                                      }
-                                      if (value.length < 16) {
-                                        return 'Card number must be 16 digits';
+                                        return 'Please enter account number';
                                       }
                                       return null;
                                     },
                                   ),
                                   const SizedBox(height: 16),
                                   TextFormField(
-                                    controller: _cardHolderController,
+                                    controller: _accountTypeController,
                                     decoration: InputDecoration(
-                                      labelText: 'Card Holder Name',
-                                      hintText: 'John Doe',
+                                      labelText: 'Account Type',
                                       labelStyle: const TextStyle(
                                         color: Colors.white,
                                       ),
-                                      hintStyle: TextStyle(
-                                        color: Colors.white.withOpacity(0.5),
+                                      filled: true,
+                                      fillColor: Colors.white.withOpacity(0.1),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(
+                                          color: Colors.white.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(
+                                          color: Colors.white.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      prefixIcon: Icon(
+                                        Icons.type_specimen,
+                                        color: Colors.white.withOpacity(0.8),
+                                      ),
+                                    ),
+                                    style: const TextStyle(color: Colors.white),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Please enter account type';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  TextFormField(
+                                    controller: _accountHolderController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Account Holder Name',
+                                      labelStyle: const TextStyle(
+                                        color: Colors.white,
                                       ),
                                       filled: true,
                                       fillColor: Colors.white.withOpacity(0.1),
@@ -567,137 +579,10 @@ class _BankingPageState extends State<BankingPage>
                                     style: const TextStyle(color: Colors.white),
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
-                                        return 'Please enter card holder name';
+                                        return 'Please enter account holder name';
                                       }
                                       return null;
                                     },
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: TextFormField(
-                                          controller: _expiryDateController,
-                                          decoration: InputDecoration(
-                                            labelText: 'Expiry Date',
-                                            hintText: 'MM/YY',
-                                            labelStyle: const TextStyle(
-                                              color: Colors.white,
-                                            ),
-                                            hintStyle: TextStyle(
-                                              color: Colors.white.withOpacity(
-                                                0.5,
-                                              ),
-                                            ),
-                                            filled: true,
-                                            fillColor: Colors.white.withOpacity(
-                                              0.1,
-                                            ),
-                                            border: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              borderSide: BorderSide(
-                                                color: Colors.white.withOpacity(
-                                                  0.3,
-                                                ),
-                                              ),
-                                            ),
-                                            enabledBorder: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              borderSide: BorderSide(
-                                                color: Colors.white.withOpacity(
-                                                  0.3,
-                                                ),
-                                              ),
-                                            ),
-                                            prefixIcon: Icon(
-                                              Icons.calendar_today_outlined,
-                                              color: Colors.white.withOpacity(
-                                                0.8,
-                                              ),
-                                            ),
-                                          ),
-                                          keyboardType: TextInputType.datetime,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                          ),
-                                          validator: (value) {
-                                            if (value == null ||
-                                                value.isEmpty) {
-                                              return 'Enter expiry date';
-                                            }
-                                            if (!RegExp(
-                                              r'^(0[1-9]|1[0-2])\/?([0-9]{2})$',
-                                            ).hasMatch(value)) {
-                                              return 'Invalid format (MM/YY)';
-                                            }
-                                            return null;
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: TextFormField(
-                                          controller: _cvvController,
-                                          decoration: InputDecoration(
-                                            labelText: 'CVV',
-                                            hintText: '123',
-                                            labelStyle: const TextStyle(
-                                              color: Colors.white,
-                                            ),
-                                            hintStyle: TextStyle(
-                                              color: Colors.white.withOpacity(
-                                                0.5,
-                                              ),
-                                            ),
-                                            filled: true,
-                                            fillColor: Colors.white.withOpacity(
-                                              0.1,
-                                            ),
-                                            border: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              borderSide: BorderSide(
-                                                color: Colors.white.withOpacity(
-                                                  0.3,
-                                                ),
-                                              ),
-                                            ),
-                                            enabledBorder: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              borderSide: BorderSide(
-                                                color: Colors.white.withOpacity(
-                                                  0.3,
-                                                ),
-                                              ),
-                                            ),
-                                            prefixIcon: Icon(
-                                              Icons.lock_outline,
-                                              color: Colors.white.withOpacity(
-                                                0.8,
-                                              ),
-                                            ),
-                                          ),
-                                          keyboardType: TextInputType.number,
-                                          obscureText: true,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                          ),
-                                          validator: (value) {
-                                            if (value == null ||
-                                                value.isEmpty) {
-                                              return 'Enter CVV';
-                                            }
-                                            if (value.length < 3) {
-                                              return 'CVV must be 3 digits';
-                                            }
-                                            return null;
-                                          },
-                                        ),
-                                      ),
-                                    ],
                                   ),
                                 ],
                               ),

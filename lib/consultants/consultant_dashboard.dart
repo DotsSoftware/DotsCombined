@@ -1,3 +1,4 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -43,6 +44,21 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
   late Animation<Offset> _slideUpAnimation;
   late Animation<double> _cardStaggerAnimation;
 
+  final FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+
+  // Helper method to log button presses
+  Future<void> _logButtonPress(String buttonName) async {
+    await analytics.logEvent(
+      name: 'button_press',
+      parameters: {
+        'button_name': buttonName,
+        'screen_name': 'consultant_dashboard',
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      },
+    );
+    print('Logged button press: $buttonName');
+  }
+
   final List<Map<String, dynamic>> menuItems = [
     {
       'icon': Icons.notification_important_outlined,
@@ -55,11 +71,6 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
       'page': AppointmentDatabase(),
     },
     {'icon': Icons.work_outline, 'title': 'Jobs', 'page': RequestDatabase()},
-    {
-      'icon': Icons.bug_report_outlined,
-      'title': 'Test Notifications',
-      'page': null, // Will be handled specially
-    },
   ];
 
   @override
@@ -113,8 +124,10 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       // Use optimized data service
-      final consultantData = await DataOptimizationService.getConsultantData(user.uid);
-      
+      final consultantData = await DataOptimizationService.getConsultantData(
+        user.uid,
+      );
+
       if (consultantData != null) {
         setState(() {
           _isVerified = consultantData['applicationStatus'] == 'verified';
@@ -123,10 +136,14 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
 
         // Start notification listener for verified consultants
         if (_isVerified && _consultantIndustryType != null) {
-          print('Starting notification listener for verified consultant in industry: $_consultantIndustryType');
+          print(
+            'Starting notification listener for verified consultant in industry: $_consultantIndustryType',
+          );
           ConsultantNotificationListener.startListening(context);
         } else {
-          print('Consultant not verified or missing industry type. Verified: $_isVerified, Industry: $_consultantIndustryType');
+          print(
+            'Consultant not verified or missing industry type. Verified: $_isVerified, Industry: $_consultantIndustryType',
+          );
         }
       } else {
         print('No consultant data found for user: ${user.uid}');
@@ -157,11 +174,14 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
   Future<void> _testNotificationSystem() async {
     try {
       // Check permissions first
-      bool hasPermission = await AppNotificationService.checkNotificationPermissions();
+      bool hasPermission =
+          await AppNotificationService.checkNotificationPermissions();
       if (!hasPermission) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Notification permissions not granted. Please enable notifications in settings.'),
+            content: Text(
+              'Notification permissions not granted. Please enable notifications in settings.',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -176,7 +196,9 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Test notifications sent! Check your notification panel.'),
+          content: Text(
+            'Test notifications sent! Check your notification panel.',
+          ),
           backgroundColor: Colors.green,
         ),
       );
@@ -258,7 +280,14 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: isEnabled ? onTap : null,
+                  onTap: isEnabled
+                      ? () {
+                          _logButtonPress(
+                            'quick_action_${title.toLowerCase().replaceAll(' ', '_')}',
+                          );
+                          onTap();
+                        }
+                      : null,
                   borderRadius: BorderRadius.circular(20),
                   child: Padding(
                     padding: const EdgeInsets.all(20),
@@ -498,7 +527,14 @@ class _ConsultantDashboardPageState extends State<ConsultantDashboardPage>
           fontWeight: FontWeight.w600,
         ),
       ),
-      onTap: isDisabled ? null : onTap,
+      onTap: isDisabled
+          ? null
+          : () {
+              _logButtonPress(
+                'drawer_$title'.toLowerCase().replaceAll(' ', '_'),
+              );
+              onTap?.call();
+            },
       enabled: !isDisabled,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

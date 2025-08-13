@@ -1,4 +1,3 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -16,7 +15,8 @@ class RequestDatabase extends StatefulWidget {
   _RequestDatabaseState createState() => _RequestDatabaseState();
 }
 
-class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderStateMixin {
+class _RequestDatabaseState extends State<RequestDatabase>
+    with TickerProviderStateMixin {
   String filter = 'All';
   late String currentUserId;
   bool _isLoading = false;
@@ -48,15 +48,13 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
       ),
     );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.3, 1.0, curve: Curves.elasticOut),
-      ),
-    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: const Interval(0.3, 1.0, curve: Curves.elasticOut),
+          ),
+        );
 
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(
@@ -91,7 +89,10 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
     setState(() => _isLoading = false);
   }
 
-  Future<void> _pickAndUpdateDocument(String fieldName, String requestId) async {
+  Future<void> _pickAndUpdateDocument(
+    String fieldName,
+    String requestId,
+  ) async {
     setState(() => _isLoading = true);
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -99,8 +100,7 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
         allowMultiple: false,
       );
 
-      if (result != null && result.files.first 
-      .bytes != null) {
+      if (result != null && result.files.first.bytes != null) {
         String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
         String originalFileName = result.files.first.name;
         String uniqueFileName = '${timestamp}_$originalFileName';
@@ -145,10 +145,7 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
     try {
       final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
-        await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         throw 'Could not launch document';
       }
@@ -175,7 +172,10 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
       final String? clientId = data['clientId'] as String?;
       final String? consultantId = data['acceptedConsultantId'] as String?;
 
-      if (clientId == null || consultantId == null || clientId.isEmpty || consultantId.isEmpty) {
+      if (clientId == null ||
+          consultantId == null ||
+          clientId.isEmpty ||
+          consultantId.isEmpty) {
         throw 'Missing or empty participant information';
       }
 
@@ -189,9 +189,7 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
 
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => DirectPage(chatId: chatId),
-        ),
+        MaterialPageRoute(builder: (context) => DirectPage(chatId: chatId)),
       );
     } catch (e) {
       setState(() {
@@ -229,7 +227,8 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
 
     setState(() => _isLoading = true);
     try {
-      DateTime requestTime = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
+      DateTime requestTime =
+          (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
       Duration timeSinceRequest = DateTime.now().difference(requestTime);
       bool isWithinHour = timeSinceRequest.inHours < 1;
 
@@ -238,28 +237,29 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
           .doc(user.email)
           .collection('requests')
           .add({
-        'requestId': request.id,
-        'timestamp': FieldValue.serverTimestamp(),
-        'status': 'pending',
-        'originalRequestData': {
-          'jobDate': data['jobDate'] ?? '',
-          'industry_type': data['industry_type'] ?? '',
-          'jobDescription': data['jobDescription'] ?? '',
-          'requestTimestamp': data['timestamp'],
-        },
-        'refundDetails': {
-          'isWithinHour': isWithinHour,
-          'fullRefundEligible': isWithinHour,
-          'consultantFee': data['consultantFee'] ?? 0,
-          'travelCost': data['travelCost'] ?? 0,
-          'calculatedRefundAmount': isWithinHour
-              ? ((data['consultantFee'] ?? 0) + (data['travelCost'] ?? 0))
-              : ((data['consultantFee'] ?? 0) * 0.5 + (data['travelCost'] ?? 0)),
-        },
-        'clientId': user.uid,
-        'clientEmail': user.email,
-        'consultantId': data['acceptedConsultantId'],
-      });
+            'requestId': request.id,
+            'timestamp': FieldValue.serverTimestamp(),
+            'status': 'pending',
+            'originalRequestData': {
+              'jobDate': data['jobDate'] ?? '',
+              'industry_type': data['industry_type'] ?? '',
+              'jobDescription': data['jobDescription'] ?? '',
+              'requestTimestamp': data['timestamp'],
+            },
+            'refundDetails': {
+              'isWithinHour': isWithinHour,
+              'fullRefundEligible': isWithinHour,
+              'consultantFee': data['consultantFee'] ?? 0,
+              'travelCost': data['travelCost'] ?? 0,
+              'calculatedRefundAmount': isWithinHour
+                  ? ((data['consultantFee'] ?? 0) + (data['travelCost'] ?? 0))
+                  : ((data['consultantFee'] ?? 0) * 0.5 +
+                        (data['travelCost'] ?? 0)),
+            },
+            'clientId': user.uid,
+            'clientEmail': user.email,
+            'consultantId': data['acceptedConsultantId'],
+          });
 
       await FirebaseFirestore.instance
           .collection('notifications')
@@ -292,7 +292,9 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
   Future<void> _closeRequest(QueryDocumentSnapshot request) async {
     setState(() => _isLoading = true);
     try {
-      final requestDocRef = FirebaseFirestore.instance.collection('client request').doc(request.id);
+      final requestDocRef = FirebaseFirestore.instance
+          .collection('notifications')
+          .doc(request.id);
       final requestDoc = await requestDocRef.get();
 
       if (!requestDoc.exists) {
@@ -316,9 +318,9 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
           .collection('inbox')
           .doc('${clientId}_$consultantId')
           .update({
-        'status': 'Closed',
-        'closedAt': FieldValue.serverTimestamp(),
-      });
+            'status': 'Closed',
+            'closedAt': FieldValue.serverTimestamp(),
+          });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -373,7 +375,11 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
     }
   }
 
-  Widget _buildModernCard({required String title, required Widget child, IconData? icon}) {
+  Widget _buildModernCard({
+    required String title,
+    required Widget child,
+    IconData? icon,
+  }) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       padding: const EdgeInsets.all(24),
@@ -432,7 +438,10 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
     );
   }
 
-  Widget _buildReadOnlyField({required String label, required TextEditingController controller}) {
+  Widget _buildReadOnlyField({
+    required String label,
+    required TextEditingController controller,
+  }) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: TextField(
@@ -452,7 +461,10 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
           ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 16,
+            horizontal: 16,
+          ),
         ),
         style: const TextStyle(color: Colors.white),
       ),
@@ -497,41 +509,56 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
     final data = request.data() as Map<String, dynamic>;
     setState(() {
       documentFields = Map<String, Map<String, String>>.from(
-          data['Documents'] as Map<dynamic, dynamic>? ?? {});
+        data['Documents'] as Map<dynamic, dynamic>? ?? {},
+      );
     });
 
-    TextEditingController whatToInspectController =
-        TextEditingController(text: data['WhatToInspect'] ?? '');
-    TextEditingController hostDetailsController =
-        TextEditingController(text: data['HostDetails'] ?? '');
-    TextEditingController siteNameController =
-        TextEditingController(text: data['SiteName'] ?? '');
-    TextEditingController siteLocationController =
-        TextEditingController(text: data['siteLocation'] ?? '');
-    TextEditingController jobDateController =
-        TextEditingController(text: data['jobDate'] ?? '');
-    TextEditingController jobTimeController =
-        TextEditingController(text: data['jobTime'] ?? '');
-    TextEditingController companyNameController =
-        TextEditingController(text: data['CompanyName'] ?? '');
-    TextEditingController regNoController =
-        TextEditingController(text: data['RegNo'] ?? '');
-    TextEditingController contactPersonController =
-        TextEditingController(text: data['ContactPerson'] ?? '');
-    TextEditingController contactNumberController =
-        TextEditingController(text: data['ContactNumber'] ?? '');
-    TextEditingController emailAddressController =
-        TextEditingController(text: data['EmailAddress'] ?? '');
-    TextEditingController physicalAddressController =
-        TextEditingController(text: data['PhysicalAddress'] ?? '');
-    TextEditingController notesController =
-        TextEditingController(text: data['Notes'] ?? '');
+    TextEditingController whatToInspectController = TextEditingController(
+      text: data['WhatToInspect'] ?? '',
+    );
+    TextEditingController hostDetailsController = TextEditingController(
+      text: data['HostDetails'] ?? '',
+    );
+    TextEditingController siteNameController = TextEditingController(
+      text: data['SiteName'] ?? '',
+    );
+    TextEditingController siteLocationController = TextEditingController(
+      text: data['siteLocation'] ?? '',
+    );
+    TextEditingController jobDateController = TextEditingController(
+      text: data['jobDate'] ?? '',
+    );
+    TextEditingController jobTimeController = TextEditingController(
+      text: data['jobTime'] ?? '',
+    );
+    TextEditingController companyNameController = TextEditingController(
+      text: data['CompanyName'] ?? '',
+    );
+    TextEditingController regNoController = TextEditingController(
+      text: data['RegNo'] ?? '',
+    );
+    TextEditingController contactPersonController = TextEditingController(
+      text: data['ContactPerson'] ?? '',
+    );
+    TextEditingController contactNumberController = TextEditingController(
+      text: data['ContactNumber'] ?? '',
+    );
+    TextEditingController emailAddressController = TextEditingController(
+      text: data['EmailAddress'] ?? '',
+    );
+    TextEditingController physicalAddressController = TextEditingController(
+      text: data['PhysicalAddress'] ?? '',
+    );
+    TextEditingController notesController = TextEditingController(
+      text: data['Notes'] ?? '',
+    );
 
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
         bool isRequestActive = data['status'] == 'accepted';
-        bool hasAcceptedConsultant = data.containsKey('acceptedConsultantId') &&
+        bool hasAcceptedConsultant =
+            data.containsKey('acceptedConsultantId') &&
             data['acceptedConsultantId'] != null;
 
         return Dialog(
@@ -559,12 +586,30 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildReadOnlyField(label: 'What to Inspect', controller: whatToInspectController),
-                        _buildReadOnlyField(label: 'Host Details', controller: hostDetailsController),
-                        _buildReadOnlyField(label: 'Site Name', controller: siteNameController),
-                        _buildReadOnlyField(label: 'Site Location', controller: siteLocationController),
-                        _buildReadOnlyField(label: 'Job Date', controller: jobDateController),
-                        _buildReadOnlyField(label: 'Job Time', controller: jobTimeController),
+                        _buildReadOnlyField(
+                          label: 'What to Inspect',
+                          controller: whatToInspectController,
+                        ),
+                        _buildReadOnlyField(
+                          label: 'Host Details',
+                          controller: hostDetailsController,
+                        ),
+                        _buildReadOnlyField(
+                          label: 'Site Name',
+                          controller: siteNameController,
+                        ),
+                        _buildReadOnlyField(
+                          label: 'Site Location',
+                          controller: siteLocationController,
+                        ),
+                        _buildReadOnlyField(
+                          label: 'Job Date',
+                          controller: jobDateController,
+                        ),
+                        _buildReadOnlyField(
+                          label: 'Job Time',
+                          controller: jobTimeController,
+                        ),
                         const Divider(color: Colors.white, height: 20),
                         const Text(
                           'Business Details',
@@ -575,13 +620,34 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                           ),
                         ),
                         const SizedBox(height: 8),
-                        _buildReadOnlyField(label: 'Company Name', controller: companyNameController),
-                        _buildReadOnlyField(label: 'Registration Number', controller: regNoController),
-                        _buildReadOnlyField(label: 'Contact Person', controller: contactPersonController),
-                        _buildReadOnlyField(label: 'Contact Number', controller: contactNumberController),
-                        _buildReadOnlyField(label: 'Email Address', controller: emailAddressController),
-                        _buildReadOnlyField(label: 'Physical Address', controller: physicalAddressController),
-                        _buildReadOnlyField(label: 'Notes', controller: notesController),
+                        _buildReadOnlyField(
+                          label: 'Company Name',
+                          controller: companyNameController,
+                        ),
+                        _buildReadOnlyField(
+                          label: 'Registration Number',
+                          controller: regNoController,
+                        ),
+                        _buildReadOnlyField(
+                          label: 'Contact Person',
+                          controller: contactPersonController,
+                        ),
+                        _buildReadOnlyField(
+                          label: 'Contact Number',
+                          controller: contactNumberController,
+                        ),
+                        _buildReadOnlyField(
+                          label: 'Email Address',
+                          controller: emailAddressController,
+                        ),
+                        _buildReadOnlyField(
+                          label: 'Physical Address',
+                          controller: physicalAddressController,
+                        ),
+                        _buildReadOnlyField(
+                          label: 'Notes',
+                          controller: notesController,
+                        ),
                         const Divider(color: Colors.white, height: 20),
                         const Text(
                           'Documents',
@@ -602,15 +668,20 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                               Material(
                                 color: Colors.transparent,
                                 child: InkWell(
-                                  onTap: () => _showCloseRequestDialog(context, request),
+                                  onTap: () =>
+                                      _showCloseRequestDialog(context, request),
                                   borderRadius: BorderRadius.circular(16),
                                   child: Container(
                                     width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: Colors.red.withOpacity(0.2),
                                       borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                                      border: Border.all(
+                                        color: Colors.red.withOpacity(0.3),
+                                      ),
                                     ),
                                     child: const Text(
                                       'Close Request',
@@ -635,14 +706,19 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                                   borderRadius: BorderRadius.circular(16),
                                   child: Container(
                                     width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.3),
+                                      ),
                                     ),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: const [
                                         Icon(
                                           Icons.chat,
@@ -668,15 +744,20 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                               Material(
                                 color: Colors.transparent,
                                 child: InkWell(
-                                  onTap: () => _showRefundDialog(context, request),
+                                  onTap: () =>
+                                      _showRefundDialog(context, request),
                                   borderRadius: BorderRadius.circular(16),
                                   child: Container(
                                     width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.3),
+                                      ),
                                     ),
                                     child: const Text(
                                       'Cancel & Refund',
@@ -704,7 +785,10 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
     );
   }
 
-  void _showCloseRequestDialog(BuildContext context, QueryDocumentSnapshot request) {
+  void _showCloseRequestDialog(
+    BuildContext context,
+    QueryDocumentSnapshot request,
+  ) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -730,12 +814,18 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                 const SizedBox(height: 16),
                 Text(
                   'Are you sure you want to close this request?',
-                  style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.7)),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'This will:\n• Mark the request as completed\n• Prevent further chat messages\n• Close the communication channel',
-                  style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.7)),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -750,11 +840,16 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                         },
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 16,
+                            horizontal: 24,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.red.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.red.withOpacity(0.3)),
+                            border: Border.all(
+                              color: Colors.red.withOpacity(0.3),
+                            ),
                           ),
                           child: const Text(
                             'Close Request',
@@ -773,7 +868,10 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                         onTap: () => Navigator.pop(context),
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 16,
+                            horizontal: 24,
+                          ),
                           child: Text(
                             'Cancel',
                             style: TextStyle(
@@ -821,12 +919,18 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                 const SizedBox(height: 16),
                 Text(
                   'Full refunds should be requested within an hour of placing the request.',
-                  style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.7)),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'Thereafter, only travel costs are refunded in full, but only 50% of the consultant\'s fees will be paid back.',
-                  style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.7)),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -841,7 +945,10 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                         },
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 16,
+                            horizontal: 24,
+                          ),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [Colors.white, Color(0xFFF0F0F0)],
@@ -874,7 +981,10 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                         onTap: () => Navigator.pop(context),
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 16,
+                            horizontal: 24,
+                          ),
                           child: Text(
                             'Close',
                             style: TextStyle(
@@ -932,11 +1042,12 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                               child: Image.network(
                                 'https://firebasestorage.googleapis.com/v0/b/dots-b3559.appspot.com/o/Dots%20logo.png?alt=media&token=2c2333ea-658a-4a70-9378-39c6c248f5ca',
                                 fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) => const Icon(
-                                  Icons.error_outline,
-                                  color: Color(0xFF1E3A8A),
-                                  size: 30,
-                                ),
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(
+                                      Icons.error_outline,
+                                      color: Color(0xFF1E3A8A),
+                                      size: 30,
+                                    ),
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -964,12 +1075,17 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                       child: FadeTransition(
                         opacity: _fadeAnimation,
                         child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.red.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.red.withOpacity(0.3)),
+                            border: Border.all(
+                              color: Colors.red.withOpacity(0.3),
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -999,9 +1115,12 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                       stream: currentUserId.isEmpty
                           ? null
                           : FirebaseFirestore.instance
-                              .collection('notifications')
-                              .where('acceptedConsultantId', isEqualTo: currentUserId)
-                              .snapshots(),
+                                .collection('notifications')
+                                .where(
+                                  'acceptedConsultantId',
+                                  isEqualTo: currentUserId,
+                                )
+                                .snapshots(),
                       builder: (context, snapshot) {
                         if (currentUserId.isEmpty) {
                           return Center(
@@ -1026,10 +1145,13 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                           );
                         }
 
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return const Center(
                             child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1E3A8A)),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Color(0xFF1E3A8A),
+                              ),
                             ),
                           );
                         }
@@ -1038,7 +1160,9 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                           return Center(
                             child: Text(
                               'Error: ${snapshot.error}',
-                              style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.7),
+                              ),
                             ),
                           );
                         }
@@ -1068,7 +1192,9 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
 
                         var requests = snapshot.data!.docs;
                         if (filter != 'All') {
-                          requests = requests.where((doc) => doc['status'] == filter).toList();
+                          requests = requests
+                              .where((doc) => doc['status'] == filter)
+                              .toList();
                         }
 
                         return ListView.builder(
@@ -1086,19 +1212,27 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                                   title: 'Job #${index + 1}',
                                   icon: _getStatusIcon(data['status'] ?? ''),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
                                           Container(
                                             padding: const EdgeInsets.all(8),
                                             decoration: BoxDecoration(
-                                              color: _getStatusColor(data['status'] ?? '').withOpacity(0.2),
-                                              borderRadius: BorderRadius.circular(12),
+                                              color: _getStatusColor(
+                                                data['status'] ?? '',
+                                              ).withOpacity(0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                             ),
                                             child: Icon(
-                                              _getStatusIcon(data['status'] ?? ''),
-                                              color: _getStatusColor(data['status'] ?? ''),
+                                              _getStatusIcon(
+                                                data['status'] ?? '',
+                                              ),
+                                              color: _getStatusColor(
+                                                data['status'] ?? '',
+                                              ),
                                               size: 24,
                                             ),
                                           ),
@@ -1107,7 +1241,9 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                                             child: Text(
                                               'Status: ${data['status'] ?? 'N/A'}',
                                               style: TextStyle(
-                                                color: _getStatusColor(data['status'] ?? ''),
+                                                color: _getStatusColor(
+                                                  data['status'] ?? '',
+                                                ),
                                                 fontWeight: FontWeight.w600,
                                                 fontSize: 16,
                                               ),
@@ -1159,21 +1295,33 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                                       ),
                                       const SizedBox(height: 16),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Material(
                                             color: Colors.transparent,
                                             child: InkWell(
-                                              onTap: () => _showEditDialog(context, request),
-                                              borderRadius: BorderRadius.circular(12),
+                                              onTap: () => _showEditDialog(
+                                                context,
+                                                request,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                               child: Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                    vertical: 12, horizontal: 16),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 12,
+                                                      horizontal: 16,
+                                                    ),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.white.withOpacity(0.1),
-                                                  borderRadius: BorderRadius.circular(12),
+                                                  color: Colors.white
+                                                      .withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
                                                   border: Border.all(
-                                                      color: Colors.white.withOpacity(0.3)),
+                                                    color: Colors.white
+                                                        .withOpacity(0.3),
+                                                  ),
                                                 ),
                                                 child: const Text(
                                                   'View Details',
@@ -1190,10 +1338,14 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                                             Material(
                                               color: Colors.transparent,
                                               child: InkWell(
-                                                onTap: () => _navigateToChat(request),
-                                                borderRadius: BorderRadius.circular(12),
+                                                onTap: () =>
+                                                    _navigateToChat(request),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                                 child: Container(
-                                                  padding: const EdgeInsets.all(8),
+                                                  padding: const EdgeInsets.all(
+                                                    8,
+                                                  ),
                                                   child: const Icon(
                                                     Icons.chat,
                                                     color: Color(0xFF1E3A8A),
@@ -1227,12 +1379,22 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                       backgroundColor: Colors.blueGrey,
                       elevation: 0,
                       items: const [
-                        BottomNavigationBarItem(icon: Icon(Icons.list), label: 'All'),
                         BottomNavigationBarItem(
-                            icon: Icon(Icons.check_circle), label: 'Active'),
+                          icon: Icon(Icons.list),
+                          label: 'All',
+                        ),
                         BottomNavigationBarItem(
-                            icon: Icon(Icons.hourglass_empty), label: 'Pending'),
-                        BottomNavigationBarItem(icon: Icon(Icons.cancel), label: 'Closed'),
+                          icon: Icon(Icons.check_circle),
+                          label: 'Active',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.hourglass_empty),
+                          label: 'Pending',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.cancel),
+                          label: 'Closed',
+                        ),
                       ],
                       selectedItemColor: const Color(0xFF1E3A8A),
                       unselectedItemColor: Colors.white.withOpacity(0.7),
@@ -1254,7 +1416,12 @@ class _RequestDatabaseState extends State<RequestDatabase> with TickerProviderSt
                           }
                         });
                       },
-                      currentIndex: ['All', 'accepted', 'pending', 'Closed'].indexOf(filter),
+                      currentIndex: [
+                        'All',
+                        'accepted',
+                        'pending',
+                        'Closed',
+                      ].indexOf(filter),
                     ),
                   ),
                 ],

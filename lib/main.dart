@@ -7,7 +7,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-
+import 'utils/notification_config.dart';
 import 'api/firebase_api.dart';
 import 'consultants/consultant_notification_listener.dart';
 import 'firebase_options.dart';
@@ -28,7 +28,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   // Handle background notification for consultants
   if (message.data['type'] == 'client_request') {
-    await ConsultantNotificationListener.handleBackgroundNotification(message.data);
+    await ConsultantNotificationListener.handleBackgroundNotification(
+      message.data,
+    );
   }
 
   await AppNotificationService.showNotification(
@@ -60,6 +62,9 @@ Future<void> main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await AppNotificationService.initialize();
   await OneSignalService.initialize(); // Initialize OneSignal
+  if (!NotificationConfig.isOneSignalConfigured) {
+    print(NotificationConfig.validationMessage);
+  }
   await setupNotifications();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   await FirebaseApi().initNotifications();
@@ -84,7 +89,7 @@ Future<void> setupNotifications() async {
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     print('Received foreground message: ${message.notification?.title}');
-    
+
     // Convert Map<String, dynamic> to Map<String, String>
     final payload = AppNotificationService.convertPayload(message.data);
 
@@ -97,7 +102,7 @@ Future<void> setupNotifications() async {
 
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     print('App opened from notification: ${message.notification?.title}');
-    
+
     // Convert Map<String, dynamic> to Map<String, String>
     final payload = AppNotificationService.convertPayload(message.data);
 
@@ -115,10 +120,13 @@ Future<void> storeFcmTokenInFirestore(String userId, String? fcmToken) async {
         'fcmToken': fcmToken,
         'lastTokenUpdate': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true)),
-      FirebaseFirestore.instance.collection('consultant_register').doc(userId).set(
-        {'fcmToken': fcmToken, 'lastTokenUpdate': FieldValue.serverTimestamp()},
-        SetOptions(merge: true),
-      ),
+      FirebaseFirestore.instance
+          .collection('consultant_register')
+          .doc(userId)
+          .set({
+            'fcmToken': fcmToken,
+            'lastTokenUpdate': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true)),
     ]);
     print('FCM token stored successfully for user: $userId');
   } catch (e) {
