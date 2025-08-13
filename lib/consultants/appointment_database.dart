@@ -158,10 +158,6 @@ class _AppointmentDatabaseState extends State<AppointmentDatabase>
       // If still null, try other possible formats
       appointmentDate ??= DateFormat('MM/dd/yyyy').parse(dateStr);
 
-      if (appointmentDate == null) {
-        throw FormatException('Unable to parse date: $dateStr');
-      }
-
       DateTime now = DateTime.now();
       DateTime today = DateTime(now.year, now.month, now.day);
       DateTime appointmentDay = DateTime(

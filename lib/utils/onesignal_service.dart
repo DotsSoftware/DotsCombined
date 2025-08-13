@@ -66,7 +66,7 @@ class OneSignalService {
         print('ℹ️ [OneSignal] PlayerID: $playerId');
       }
 
-      if (playerId != null && playerId.isNotEmpty) {
+      if (playerId!.isNotEmpty) {
         final updateData = {
           'oneSignalPlayerId': playerId,
           'lastOneSignalUpdate': FieldValue.serverTimestamp(),
@@ -392,18 +392,14 @@ class OneSignalService {
       print('🧪 Testing OneSignal notification system...');
 
       String? currentPlayerId = await OneSignal.User.pushSubscription.id;
-      if (currentPlayerId != null) {
-        await sendNotificationToUsers(
-          playerIds: [currentPlayerId],
-          title: 'OneSignal Test',
-          body: 'OneSignal notification system is working! 🎉',
-          data: {'test': 'onesignal_success'},
-        );
-        print('✅ OneSignal test notification sent to current user');
-      } else {
-        print('⚠️ No OneSignal Player ID available for current user');
-      }
-
+      await sendNotificationToUsers(
+        playerIds: [?currentPlayerId],
+        title: 'OneSignal Test',
+        body: 'OneSignal notification system is working! 🎉',
+        data: {'test': 'onesignal_success'},
+      );
+      print('✅ OneSignal test notification sent to current user');
+    
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         DocumentSnapshot consultantDoc = await FirebaseFirestore.instance

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'Banking.dart';
-import '../utils/theme.dart'; // Assuming theme.dart contains appGradient
+import '../utils/theme.dart';
+import 'banking.dart'; // Assuming theme.dart contains appGradient
 
 class IndustrySelectionPage extends StatefulWidget {
   const IndustrySelectionPage({Key? key}) : super(key: key);

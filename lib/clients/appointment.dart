@@ -515,12 +515,10 @@ class _AppointmentPageState extends State<AppointmentPage>
       },
     );
 
-    if (pickedDate != null) {
-      setState(() {
-        _controllerJobDate.text = DateFormat('yyyy-MM-dd').format(pickedDate);
-      });
+    setState(() {
+      _controllerJobDate.text = DateFormat('yyyy-MM-dd').format(pickedDate!);
+    });
     }
-  }
 
   Future<void> _selectTime() async {
     TimeOfDay? pickedTime = await showTimePicker(
@@ -626,7 +624,6 @@ class _AppointmentPageState extends State<AppointmentPage>
     required TextEditingController controller,
     bool isDate = false,
     bool isTime = false,
-    bool isLocation = false,
     int maxLines = 1,
     VoidCallback? onTap,
     Widget? suffixIcon,

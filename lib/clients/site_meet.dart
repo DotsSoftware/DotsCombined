@@ -527,12 +527,10 @@ class _SiteMeetPageState extends State<SiteMeetPage>
       },
     );
 
-    if (pickedDate != null) {
-      setState(() {
-        _controllerJobDate.text = DateFormat('yyyy-MM-dd').format(pickedDate);
-      });
+    setState(() {
+      _controllerJobDate.text = DateFormat('yyyy-MM-dd').format(pickedDate!);
+    });
     }
-  }
 
   Future<void> _selectTime() async {
     TimeOfDay? pickedTime = await showTimePicker(

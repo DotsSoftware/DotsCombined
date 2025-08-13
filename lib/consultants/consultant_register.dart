@@ -1062,14 +1062,12 @@ class _ConsultantRegisterPageState extends State<ConsultantRegisterPage>
                           },
                         );
 
-                        if (pickedDate != null) {
-                          String formattedDate =
-                              "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
-                          setState(() {
-                            controller.text = formattedDate;
-                          });
-                        }
-                      }
+                        String formattedDate =
+                            "${pickedDate?.day}/${pickedDate?.month}/${pickedDate?.year}";
+                        setState(() {
+                          controller.text = formattedDate;
+                        });
+                                            }
                     : null,
               ),
       ),
