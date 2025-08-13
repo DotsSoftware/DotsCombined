@@ -15,8 +15,6 @@ import 'webview.dart';
 import 'competency.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-import 'yoco_payment.dart';
-
 class SearchPage extends StatefulWidget {
   final String requestType;
   final String industryType;
@@ -566,43 +564,18 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
                   String consultantId = selectedConsultant!['uid'] ?? '';
                   await _createAndNavigateToChat(consultantId);
 
-                  // Fetch appointment details for payment info
-                  QuerySnapshot appointmentSnapshot = await FirebaseFirestore
-                      .instance
-                      .collection('selection')
-                      .doc(userId)
-                      .collection('appointments')
-                      .orderBy('timestamp', descending: true)
-                      .limit(1)
-                      .get();
-
-                  Map<String, dynamic> appointmentData =
-                      appointmentSnapshot.docs.isNotEmpty
-                      ? appointmentSnapshot.docs.first.data()
-                            as Map<String, dynamic>
-                      : {};
-
-                  // Define payment parameters
-                  double paymentAmount =
-                      100.0; // Replace with actual amount from Firestore or logic
-                  String currency = 'ZAR';
-                  String description =
-                      appointmentData['jobDescription'] ??
-                      'Consultant Service Payment';
-                  String customerReference = activeRequestId ?? userId;
-
-                  // Navigate to YocoPaymentPage with required parameters
+                  // Navigate to WebView after chat creation
+                  print('Navigating to WebViewPage...');
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => YocoPaymentPage(
-                        amount: paymentAmount,
-                        currency: currency,
-                        description: description,
-                        customerReference: customerReference,
+                      builder: (context) => WebViewPage(
+                        activeRequestId: activeRequestId,
+                        appointmentId: '',
                       ),
                     ),
                   );
+                  print('Navigation completed');
                 } catch (e) {
                   print('Error in onPressed: $e');
                   print('Stack trace: ${StackTrace.current}');
@@ -679,51 +652,22 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
         'participants': [clientId, consultantId],
         'lastMessage': '',
         'lastMessageTime': FieldValue.serverTimestamp(),
-        'requestId': activeRequestId, // Store the request ID
+        'requestId':
+            activeRequestId, // Store the request ID instead of appointment ID
       }, SetOptions(merge: true));
 
-      // Fetch appointment details for payment info
-      QuerySnapshot appointmentSnapshot = await FirebaseFirestore.instance
-          .collection('selection')
-          .doc(clientId)
-          .collection('appointments')
-          .orderBy('timestamp', descending: true)
-          .limit(1)
-          .get();
-
-      Map<String, dynamic> appointmentData = appointmentSnapshot.docs.isNotEmpty
-          ? appointmentSnapshot.docs.first.data() as Map<String, dynamic>
-          : {};
-
-      // Define payment parameters
-      double paymentAmount =
-          appointmentData['consultantFee']?.toDouble() ?? 100.0;
-      String currency = 'ZAR';
-      String description = appointmentData['jobDescription']?.isNotEmpty == true
-          ? appointmentData['jobDescription']
-          : 'Consultant Service Payment';
-      String customerReference = activeRequestId?.isNotEmpty == true
-          ? activeRequestId!
-          : clientId;
-
-      // Navigate to YocoPaymentPage
+      // Navigate to chat page
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => YocoPaymentPage(
-            amount: paymentAmount,
-            currency: currency,
-            description: description,
-            customerReference: customerReference,
-          ),
+          builder: (context) =>
+              WebViewPage(activeRequestId: activeRequestId, appointmentId: ''),
         ),
       );
     } catch (e) {
       print('Error in _createAndNavigateToChat: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to create chat or proceed to payment: $e'),
-        ),
+        SnackBar(content: Text('Failed to create chat. Please try again.')),
       );
     }
   }

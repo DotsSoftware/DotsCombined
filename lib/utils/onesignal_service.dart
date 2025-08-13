@@ -285,6 +285,38 @@ class OneSignalService {
     required String jobDescription,
   }) async {
     try {
+      // Get all consultants in the specified industry
+      QuerySnapshot consultantSnapshot = await FirebaseFirestore.instance
+          .collection('consultant_register')
+          .where('industry_type', isEqualTo: industryType)
+          .where('applicationStatus', isEqualTo: 'verified')
+          .get();
+
+      if (consultantSnapshot.docs.isEmpty) {
+        print('⚠️ No consultants found for industry: $industryType');
+        return;
+      }
+
+      List<String> playerIds = [];
+      List<String> consultantIds = [];
+
+      // Collect all consultant player IDs
+      for (var doc in consultantSnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final String? playerId = data['oneSignalPlayerId'];
+        if (playerId != null && playerId.isNotEmpty) {
+          playerIds.add(playerId);
+          consultantIds.add(doc.id);
+        } else {
+          print('⚠️ No OneSignal Player ID for consultant: ${doc.id}');
+        }
+      }
+
+      if (playerIds.isEmpty) {
+        print('⚠️ No valid player IDs found for industry: $industryType');
+        return;
+      }
+
       final notificationData = {
         'type': 'client_request',
         'requestId': requestId,
@@ -297,15 +329,19 @@ class OneSignalService {
         'jobDescription': jobDescription,
       };
 
-      await sendNotificationToIndustry(
-        industryType: industryType,
+      // Send to all collected player IDs
+      await sendNotificationToUsers(
+        playerIds: playerIds,
         title: '📌 New Client Request',
         body: 'New request in $industryType - $siteLocation',
         data: notificationData,
       );
 
+      // Log successful notification
+      await _logNotificationSent(industryType, playerIds.length, consultantIds);
+
       print(
-        '✅ OneSignal client request notification sent for industry: $industryType',
+        '✅ OneSignal client request notification sent to ${playerIds.length} consultants for industry: $industryType',
       );
     } catch (e) {
       print('❌ Error sending OneSignal client request notification: $e');

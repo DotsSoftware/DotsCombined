@@ -59,7 +59,7 @@ class _WebViewPageState extends State<WebViewPage> {
           },
         ),
       )
-      ..loadRequest(Uri.parse('https://mzansiservices.github.io/payment/'));
+      ..loadRequest(Uri.parse('https://pay.yoco.com/dots-consultants'));
   }
 
   @override
@@ -131,38 +131,105 @@ class _WebViewPageState extends State<WebViewPage> {
     }
   }
 
-  Future<void> _injectAmountIntoField() async {
+  Future<double> _fetchTotalPrice() async {
     try {
-      final double totalPrice = await _fetchTotalPrice();
-      final String script =
-          """
-        document.getElementById('payment-amount').value = $totalPrice;
-        document.getElementById('payment-amount').readOnly = true;
-        document.getElementById('payment-amount').disabled = true;
-      """;
-      await _controller.runJavaScript(script);
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('User not logged in');
+        return 0.0;
+      }
+
+      // Try to get price from the specific appointment document
+      final doc = await FirebaseFirestore.instance
+          .collection('notifications')
+          .doc(widget.appointmentId)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data();
+        if (data?['price'] != null) {
+          return double.parse(data!['price'].toString());
+        }
+        if (data?['total_price'] != null) {
+          return double.parse(data!['total_price'].toString());
+        }
+      }
+
+      debugPrint('No price found in appointment document');
+      return 0.0;
     } catch (e) {
-      debugPrint('Error injecting amount: $e');
+      debugPrint('Error fetching price: $e');
+      return 0.0;
     }
   }
 
-  Future<double> _fetchTotalPrice() async {
+  Future<void> _injectAmountIntoField() async {
     try {
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(FirebaseAuth.instance.currentUser?.uid)
-          .collection('transactions')
-          .orderBy('timestamp', descending: true)
-          .limit(1)
-          .get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        return double.parse(querySnapshot.docs.first['total_price']);
+      final double totalPrice = await _fetchTotalPrice();
+      if (totalPrice <= 0) {
+        debugPrint('Invalid price amount: $totalPrice');
+        return;
       }
-      return 0.0;
+
+      final String formattedPrice = totalPrice.toStringAsFixed(2);
+      debugPrint('Attempting to inject price: $formattedPrice');
+
+      // We'll try multiple approaches to ensure the field gets populated
+      final String script =
+          """
+      function injectPrice() {
+        // Try getting the element by ID first
+        var amountField = document.getElementById('amount');
+        
+        // If not found, try querySelector as fallback
+        if (!amountField) {
+          amountField = document.querySelector('input[field="amount"]');
+        }
+        
+        if (amountField) {
+          amountField.value = '$formattedPrice';
+          amountField.readOnly = true;
+          amountField.disabled = true;
+          
+          // Apply styles
+          amountField.style.borderColor = '#FF4C4C';
+          amountField.style.borderWidth = '1px';
+          amountField.style.backgroundColor = '#FFEDED';
+          
+          // Trigger events
+          var inputEvent = new Event('input', { bubbles: true });
+          var changeEvent = new Event('change', { bubbles: true });
+          amountField.dispatchEvent(inputEvent);
+          amountField.dispatchEvent(changeEvent);
+          
+          console.log('Successfully injected price: $formattedPrice');
+          return true;
+        }
+        
+        console.warn('Could not find amount field');
+        return false;
+      }
+      
+      // Try injecting immediately
+      if (injectPrice()) {
+        return;
+      }
+      
+      // If not successful, wait and try again
+      setTimeout(() => {
+        if (injectPrice()) {
+          return;
+        }
+        console.warn('Second injection attempt failed');
+      }, 500);
+    """;
+
+      await _controller.runJavaScript(script);
     } catch (e) {
-      debugPrint('Error fetching total price: $e');
-      return 0.0;
+      debugPrint('Error in injection script: $e');
+      // Retry after delay
+      await Future.delayed(const Duration(milliseconds: 1000));
+      await _injectAmountIntoField();
     }
   }
 

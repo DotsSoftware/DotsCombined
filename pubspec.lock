@@ -648,6 +648,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_yoco:
+    dependency: "direct main"
+    description:
+      name: flutter_yoco
+      sha256: "3f7409d1e7eedbc1617e9b2e2e31a85199c5d66153be7f401092d66ea526bd4a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.2"
   freezed_annotation:
     dependency: transitive
     description:
